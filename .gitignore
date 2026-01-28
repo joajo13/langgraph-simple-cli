@@ -4,3 +4,5 @@ dist
 .env.local
 .token.json
 .user_profile.json
+.simple-cli.json
+

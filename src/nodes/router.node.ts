@@ -42,14 +42,14 @@ ${toolDescriptions}
 ${systemInstructions}
 
 DECISION LOGIC:
-1. greeting / casual chat -> needsTools: false
+1. greeting / casual chat -> needsTools: false (UNLESS user shares personal info)
 2. specific question requiring knowledge (weather, prices, news, facts, calculation, time) -> needsTools: TRUE
 3. explicit request to "search", "calculate", "check" -> needsTools: TRUE
+4. User shares personal info (name, location, preferences) -> needsTools: TRUE (Use 'update_profile_field' or 'add_user_memory')
 
 IMPORTANT:
 - If the user asks for "weather", "news", "price", "time", "who is", "what is" -> YOU MUST USE A TOOL.
-
-- If the user asks for "weather", "news", "price", "time", "who is", "what is" -> YOU MUST USE A TOOL.
+- If the user says "My name is X" or "I live in Y" -> YOU MUST USE 'update_profile_field' or 'add_user_memory'.
 
 CALENDAR TOOL SELECTION (CRITICAL):
 - "mis eventos", "agenda", "my events", "qué tengo hoy", "what do I have today" -> USE 'calendar_get_events'. NEVER use web_search for this.
@@ -77,7 +77,14 @@ CHAINING TOOLS (CRITICAL):
 OUTPUT FORMAT:
 Return valid JSON matching the schema.
 For 'args', provide a valid JSON STRING representation of the arguments.
-Example: args: "{\\"query\\": \\"weather in San Nicolas\\"}"`;
+Example: args: "{\\"query\\": \\"weather in San Nicolas\\"}"
+Example for update_profile: args: "{\\"key\\": \\"name\\", \\"value\\": \\"Juan\\"}"
+
+RECENT HISTORY CHECK:
+- Check the \`toolResults\` or previous messages.
+- If the LAST message is a ToolMessage indicating SUCCESS for the user's request, set needsTools: FALSE.
+- Do NOT call the same tool again with the same arguments if it just succeeded.
+- If the tool failed (error message), you MAY retry with corrected arguments.`;
 
   return async (state: AgentState): Promise<Partial<AgentState>> => {
     try {

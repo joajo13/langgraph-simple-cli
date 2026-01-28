@@ -4,7 +4,7 @@ import { Config } from './config';
 import { createLLM } from './llm';
 import { skillRegistry, loadAndRegisterSkills } from './skills'; 
 import { createSkillAccessTools } from './tools/skills.tools';
-import { createRouterNode, createToolExecutorNode, createGeneratorNode } from './nodes';
+import { createRouterNode, createToolExecutorNode, createGeneratorNode, createSummarizerNode } from './nodes';
 import { ToolInfo } from './tools';
 
 /**
@@ -59,15 +59,18 @@ IMPORTANT RULES:
   const routerNode = createRouterNode(llm, toolsInfo, systemInstructions);
   const toolExecutorNode = createToolExecutorNode(allTools);
   const generatorNode = createGeneratorNode(llm);
+  const summarizerNode = createSummarizerNode(llm);
   
   const workflow = new StateGraph(AgentState)
     // Add nodes
     .addNode('router', routerNode)
     .addNode('toolExecutor', toolExecutorNode)
     .addNode('generator', generatorNode)
+    .addNode('summarizer', summarizerNode)
     
-    // Entry point
-    .addEdge(START, 'router')
+    // Entry point: Check for summarization first
+    .addEdge(START, 'summarizer')
+    .addEdge('summarizer', 'router')
     
     // Router decides if tools are needed
     .addConditionalEdges(

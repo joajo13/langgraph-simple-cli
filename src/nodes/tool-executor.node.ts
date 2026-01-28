@@ -30,7 +30,6 @@ export function createToolExecutorNode(tools: StructuredTool[]) {
           logger.warn(`[ToolExecutor] Tool not found: ${name}`);
           logger.debug(`[ToolExecutor] Available tools: ${Array.from(toolMap.keys()).join(', ')}`);
           return { key: `${name}_${index}`, result: `Tool "${name}" not found` };
-          return { key: `${name}_${index}`, result: `Tool "${name}" not found`, name, args };
         }
         
         try {

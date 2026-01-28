@@ -16,7 +16,7 @@ export const AgentState = Annotation.Root({
     default: () => ({})
   }),
   
-  // Final response to user
+
   response: Annotation<string>({
     reducer: (_, y) => y,
     default: () => ''

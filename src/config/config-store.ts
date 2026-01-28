@@ -7,25 +7,23 @@ import { logger } from '../logger';
 
 dotenv.config();
 
-const CONFIG_DIR_NAME = '.langgraph-simple-cli';
-const OLD_CONFIG_DIR_NAME = '.research-assistant';
+const CONFIG_FILE = path.join(process.cwd(), '.simple-cli.json');
 
-const CONFIG_DIR = path.join(os.homedir(), CONFIG_DIR_NAME);
-const OLD_CONFIG_DIR = path.join(os.homedir(), OLD_CONFIG_DIR_NAME);
-const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
+// Ensure we don't accidentally use the old directory constants if they are still around
+// const CONFIG_DIR = path.dirname(CONFIG_FILE); // Not needed if we write directly to file in CWD
 
-// Auto-migration: If old config exists and new one doesn't, move it.
-if (fs.existsSync(path.join(OLD_CONFIG_DIR, 'config.json')) && !fs.existsSync(CONFIG_FILE)) {
-  try {
-    if (!fs.existsSync(CONFIG_DIR)) {
-      fs.mkdirSync(CONFIG_DIR, { recursive: true });
-    }
-    fs.copyFileSync(path.join(OLD_CONFIG_DIR, 'config.json'), CONFIG_FILE);
-    logger.info(`Migrated configuration from ${OLD_CONFIG_DIR_NAME} to ${CONFIG_DIR_NAME}`);
-  } catch (e) {
-    logger.error('Failed to migrate old configuration', e);
-  }
-}
+// Auto-migration: If global config exists (from previous version) and local doesn't, maybe copy it?
+// For now, we will just start fresh or let the user re-run setup.
+// But if we wanted to support migration from the "old" global .langgraph-simple-cli:
+// const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.langgraph-simple-cli', 'config.json');
+// if (fs.existsSync(GLOBAL_CONFIG_PATH) && !fs.existsSync(CONFIG_FILE)) {
+//    try {
+//        fs.copyFileSync(GLOBAL_CONFIG_PATH, CONFIG_FILE);
+//        logger.info(`Migrated global configuration to local .simple-cli.json`);
+//    } catch (e) {
+//        logger.error('Failed to migrate global configuration', e);
+//    }
+// }
 
 export { Config, LLMProvider };
 
@@ -61,7 +59,7 @@ export function loadConfig(): Config | null {
   if (process.env.GOOGLE_API_KEY) loadedConfig.googleApiKey = process.env.GOOGLE_API_KEY;
   if (process.env.GOOGLE_API_KEY) loadedConfig.googleApiKey = process.env.GOOGLE_API_KEY;
   if (process.env.TAVILY_API_KEY) loadedConfig.tavilyApiKey = process.env.TAVILY_API_KEY;
-  if (process.env.LOG_LEVEL) loadedConfig.logLevel = process.env.LOG_LEVEL;
+  if (process.env.LOG_LEVEL) loadedConfig.logLevel = process.env.LOG_LEVEL.trim().toLowerCase();
   
   // Google OAuth
   if (process.env.GOOGLE_CLIENT_ID) loadedConfig.googleClientId = process.env.GOOGLE_CLIENT_ID;
@@ -80,9 +78,6 @@ export function loadConfig(): Config | null {
 }
 
 export function saveConfig(config: Config): void {
-  if (!fs.existsSync(CONFIG_DIR)) {
-    fs.mkdirSync(CONFIG_DIR, { recursive: true });
-  }
   // We only save to file, we don't write to .env
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
 }
