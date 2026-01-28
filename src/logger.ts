@@ -3,6 +3,7 @@ export enum LogLevel {
   INFO = 1,
   WARN = 2,
   ERROR = 3,
+  SILENT = 4,
 }
 
 /**
@@ -32,6 +33,7 @@ export class Logger {
       case 'info': this.level = LogLevel.INFO; break;
       case 'warn': this.level = LogLevel.WARN; break;
       case 'error': this.level = LogLevel.ERROR; break;
+      case 'silent': this.level = LogLevel.SILENT; break;
       default: this.level = LogLevel.INFO; break;
     }
   }
