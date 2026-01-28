@@ -7,8 +7,25 @@ import { logger } from '../logger';
 
 dotenv.config();
 
-const CONFIG_DIR = path.join(os.homedir(), '.research-assistant');
+const CONFIG_DIR_NAME = '.langgraph-simple-cli';
+const OLD_CONFIG_DIR_NAME = '.research-assistant';
+
+const CONFIG_DIR = path.join(os.homedir(), CONFIG_DIR_NAME);
+const OLD_CONFIG_DIR = path.join(os.homedir(), OLD_CONFIG_DIR_NAME);
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
+
+// Auto-migration: If old config exists and new one doesn't, move it.
+if (fs.existsSync(path.join(OLD_CONFIG_DIR, 'config.json')) && !fs.existsSync(CONFIG_FILE)) {
+  try {
+    if (!fs.existsSync(CONFIG_DIR)) {
+      fs.mkdirSync(CONFIG_DIR, { recursive: true });
+    }
+    fs.copyFileSync(path.join(OLD_CONFIG_DIR, 'config.json'), CONFIG_FILE);
+    logger.info(`Migrated configuration from ${OLD_CONFIG_DIR_NAME} to ${CONFIG_DIR_NAME}`);
+  } catch (e) {
+    logger.error('Failed to migrate old configuration', e);
+  }
+}
 
 export { Config, LLMProvider };
 

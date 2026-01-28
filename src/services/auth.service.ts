@@ -236,18 +236,29 @@ export class AuthService {
       // 3. Listen
       server.listen(port, () => {
         const authUrl = this.getAuthUrl();
-        console.log('Abriendo navegador para autenticación...');
-        console.log('Si no se abre automáticamente, visita:', authUrl);
+        console.log('\n' + '='.repeat(60));
+        console.log(' AUTENTICACIÓN DE GOOGLE REQUERIDA');
+        console.log('='.repeat(60));
+        console.log('Intentando abrir el navegador automáticamente...');
+        console.log('Si no se abre, por favor visita este enlace:');
+        console.log('\n' + authUrl + '\n');
+        console.log('='.repeat(60) + '\n');
         
-        // 4. Open Browser (Native)
-        const startCommand = process.platform === 'win32' ? 'start' : 
-                             process.platform === 'darwin' ? 'open' : 'xdg-open';
-        
-        exec(`${startCommand} "${authUrl.replace(/"/g, '\\"')}"`, (err) => {
-            if (err) {
-                console.error('No se pudo abrir el navegador automáticamente:', err.message);
-            }
-        });
+        if (process.platform === 'win32') {
+          // Windows requires a title as the first argument if quotes are used
+          exec(`start "" "${authUrl.replace(/"/g, '\\"')}"`, (err) => {
+              if (err) {
+                  console.error('No se pudo abrir el navegador automáticamente:', err.message);
+              }
+          });
+        } else {
+          const startCommand = process.platform === 'darwin' ? 'open' : 'xdg-open';
+          exec(`${startCommand} "${authUrl.replace(/"/g, '\\"')}"`, (err) => {
+              if (err) {
+                  console.error('No se pudo abrir el navegador automáticamente:', err.message);
+              }
+          });
+        }
       });
       
       server.on('error', (e) => {
