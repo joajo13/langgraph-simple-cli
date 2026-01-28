@@ -10,6 +10,8 @@ import {
 } from './config-store';
 import { validateLLMKey, validateTavilyKey } from './validators';
 import { AuthService } from '../services/auth.service';
+import { fetchModelsForProvider } from './model-fetcher';
+import { loadConfig, clearConfig } from './config-store';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const { Select, Input } = Enquirer as any;
@@ -35,19 +37,40 @@ async function selectProvider(): Promise<LLMProvider> {
   return selected.value;
 }
 
-async function selectModel(provider: LLMProvider): Promise<string> {
-  const models = AVAILABLE_MODELS[provider];
-  const defaultModel = DEFAULT_MODELS[provider];
+async function selectModel(provider: LLMProvider, apiKey: string): Promise<string> {
+  const defaults = DEFAULT_MODELS[provider];
+  const hardcoded = AVAILABLE_MODELS[provider] || [defaults];
   
-  console.log(chalk.yellow('\n2️⃣  Selecciona el modelo:'));
+  const spinner = ora('   Buscando modelos disponibles...').start();
+  const dynamicModels = await fetchModelsForProvider(provider, apiKey);
+  spinner.stop();
   
+  // Merge and deduplicate
+  const allModels = Array.from(new Set([...hardcoded, ...dynamicModels]));
+  
+  console.log(chalk.yellow('\n3️⃣  Selecciona el modelo:'));
+  
+  const choices = [
+    ...allModels.map((m: string) => m === defaults ? `${m} (recomendado)` : m),
+    '✏️  Otro (Ingresar manualmente)'
+  ];
+
   const prompt = new Select({
     name: 'model',
     message: 'Elige un modelo',
-    choices: models.map((m: string) => m === defaultModel ? `${m} (recomendado)` : m)
+    choices: choices
   });
 
   const answer: string = await prompt.run();
+  
+  if (answer === '✏️  Otro (Ingresar manualmente)') {
+     const inputPrompt = new Input({
+       name: 'customModel',
+       message: 'Ingresa el nombre del modelo (ej: gpt-4-32k)'
+     });
+     return ((await inputPrompt.run()) as string).trim();
+  }
+
   return answer.replace(' (recomendado)', '');
 }
 
@@ -55,7 +78,7 @@ async function inputApiKey(provider: LLMProvider): Promise<string> {
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const providerInfo = PROVIDERS.find(p => p.value === provider)!;
   
-  console.log(chalk.yellow(`\n3️⃣  API Key de ${providerInfo.name.split(' ')[0]}:`));
+  console.log(chalk.yellow(`\n2️⃣  API Key de ${providerInfo.name.split(' ')[0]}:`));
   console.log(chalk.gray(`   Obtener en: ${providerInfo.url}`));
   
   while (true) {
@@ -152,6 +175,17 @@ async function setupGmail(): Promise<Partial<Config>> {
   return { googleClientId, googleClientSecret };
 }
 
+async function inputLogLevel(): Promise<string> {
+  const prompt = new Select({
+    name: 'logLevel',
+    message: '¿Nivel de Logs?',
+    choices: ['info (Recomendado)', 'debug (Ver todo)', 'warn (Solo alertas)', 'error (Solo errores)']
+  });
+  
+  const answer = await prompt.run();
+  return answer.split(' ')[0];
+}
+
 export async function runSetupWizard(): Promise<Config> {
   console.clear();
   console.log(chalk.cyan('╭──────────────────────────────────────────────╮'));
@@ -162,15 +196,17 @@ export async function runSetupWizard(): Promise<Config> {
   
   try {
     const provider = await selectProvider();
-    const model = await selectModel(provider);
     const llmApiKey = await inputApiKey(provider);
+    const model = await selectModel(provider, llmApiKey);
     const tavilyApiKey = await inputTavilyKey();
     const gmailConfig = await setupGmail();
+    const logLevel = await inputLogLevel();
     
     const config: Config = {
       llmProvider: provider,
       llmModel: model,
       tavilyApiKey,
+      logLevel: logLevel as any,
       gmailRedirectUri: 'http://localhost:3000/oauth2callback',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -197,6 +233,8 @@ export async function runSetupWizard(): Promise<Config> {
     console.log(chalk.cyan('├──────────────────────────────────────────────┤'));
     console.log(chalk.cyan('│') + chalk.white(`  Provider: ${provider.padEnd(32)}`) + chalk.cyan('│'));
     console.log(chalk.cyan('│') + chalk.white(`  Model:    ${model.padEnd(32)}`) + chalk.cyan('│'));
+    console.log(chalk.cyan('│') + chalk.white(`  Model:    ${model.padEnd(32)}`) + chalk.cyan('│'));
+    console.log(chalk.cyan('│') + chalk.white(`  Logs:     ${logLevel.padEnd(32)}`) + chalk.cyan('│'));
     console.log(chalk.cyan('│') + chalk.white(`  Tavily:   ${tavilyApiKey ? '✅ Configurado' : '❌ No configurado'}`.padEnd(44)) + chalk.cyan('│'));
     console.log(chalk.cyan('│') + chalk.white(`  Gmail:    ${gmailConfig.googleClientId ? '✅ Configurado' : '❌ No configurado'}`.padEnd(44)) + chalk.cyan('│'));
     console.log(chalk.cyan('╰──────────────────────────────────────────────╯'));
@@ -210,6 +248,120 @@ export async function runSetupWizard(): Promise<Config> {
 }
 
 export async function reconfigureWizard(): Promise<Config> {
-  // We can ignore specific previous config on re-run for simplicity
-  return runSetupWizard();
+  console.clear();
+  console.log(chalk.cyan('╭──────────────────────────────────────────────╮'));
+  console.log(chalk.cyan('│') + chalk.bold.white('  ⚙️  Configuración del Agente                 ') + chalk.cyan('│'));
+  console.log(chalk.cyan('╰──────────────────────────────────────────────╯'));
+  console.log();
+
+  const currentConfig = loadConfig();
+  if (!currentConfig) {
+      return runSetupWizard();
+  }
+
+  const prompt = new Select({
+    name: 'action',
+    message: '¿Qué deseas hacer?',
+    choices: [
+      '🔄 Reconfigurar todo (Wizard completo)',
+      '🧠 Cambiar Modelo LLM',
+      '🐞 Configurar Logs',
+      '🔑 Actualizar API Keys',
+      '🗑️  Eliminar/Resetear Configuración',
+      '↩️  Cancelar'
+    ]
+  });
+
+  const action = await prompt.run();
+
+  if (action.startsWith('↩️')) {
+      console.log('Operación cancelada.');
+      return currentConfig;
+  }
+
+  if (action.startsWith('🔄')) {
+      return runSetupWizard();
+  }
+
+  if (action.startsWith('🧠')) {
+      // Change model only
+      const provider = currentConfig.llmProvider;
+      const apiKey = getApiKeyForProvider(currentConfig, provider);
+      
+      console.log(chalk.gray(`Proveedor actual: ${provider}`));
+      if (!apiKey) {
+          console.log(chalk.red('No se encontró API Key válida. Ejecuta la reconfiguración completa.'));
+          return runSetupWizard();
+      }
+
+      const newModel = await selectModel(provider, apiKey);
+      const newConfig = { ...currentConfig, llmModel: newModel, updatedAt: new Date().toISOString() };
+      saveConfig(newConfig as Config);
+      console.log(chalk.green(`\n✅ Modelo actualizado a: ${newModel}`));
+      return newConfig as Config;
+  }
+
+  if (action.startsWith('🐞')) {
+      const newLevel = await inputLogLevel();
+      const newConfig = { ...currentConfig, logLevel: newLevel, updatedAt: new Date().toISOString() };
+      saveConfig(newConfig as Config); 
+      console.log(chalk.green(`\n✅ Nivel de logs actualizado a: ${newLevel}`));
+      return newConfig as Config;
+  }
+
+  if (action.startsWith('🔑')) {
+      // Update keys only
+      console.log(chalk.yellow('\nActualizando API Keys...'));
+      const provider = currentConfig.llmProvider;
+      const newKey = await inputApiKey(provider);
+      
+      const newConfig = { ...currentConfig };
+      if (provider === 'openai') newConfig.openaiApiKey = newKey;
+      if (provider === 'anthropic') newConfig.anthropicApiKey = newKey;
+      if (provider === 'google') newConfig.googleApiKey = newKey;
+      
+      newConfig.updatedAt = new Date().toISOString();
+      
+      // Optional: Ask for Tavily again?
+      const updateTavily = new Select({
+          name: 'update',
+          message: '¿Actualizar Tavily Key?',
+          choices: ['Si', 'No']
+      });
+      
+      if (await updateTavily.run() === 'Si') {
+          newConfig.tavilyApiKey = await inputTavilyKey();
+      }
+
+      saveConfig(newConfig as Config);
+      console.log(chalk.green('\n✅ API Keys actualizadas.'));
+      return newConfig as Config; 
+  }
+
+  if (action.startsWith('🗑️')) {
+      const confirm = new Select({
+          name: 'confirm',
+          message: '¿Estás seguro? Esto eliminará todas tus API keys y configuraciones.',
+          choices: ['No', 'Si, eliminar todo']
+      });
+      
+      if (await confirm.run() === 'Si, eliminar todo') {
+          clearConfig();
+          console.log(chalk.red('\n🗑️  Configuración eliminada.'));
+          console.log(chalk.white('Por favor reinicia el agente para configurar de nuevo.'));
+          process.exit(0);
+      }
+      return currentConfig;
+  }
+
+  return currentConfig;
+}
+
+function getApiKeyForProvider(config: Config, provider: LLMProvider): string {
+    switch (provider) {
+        case 'openai': return config.openaiApiKey || '';
+        case 'anthropic': return config.anthropicApiKey || '';
+        case 'google': return config.googleApiKey || '';
+        default: return '';
+    }
 }

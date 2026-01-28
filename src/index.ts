@@ -8,32 +8,37 @@ import { logger } from './logger';
 async function main() {
   let config;
   
-  console.log('[DEBUG] Starting main...');
   // Check if config exists or env vars are set
   // If not, run setup wizard interactively
   if (!configExists()) {
-    console.log('[DEBUG] Config not found, running wizard...');
+    logger.debug('Config not found, running wizard...');
     config = await runSetupWizard();
   } else {
-    console.log('[DEBUG] Loading config...');
+    logger.debug('Loading config...');
     config = loadConfig();
     if (!config) {
       // Config load failed (validation error), prompt to setup again
       logger.warn('Configuration invalid or missing. Starting setup wizard...');
       config = await runSetupWizard();
     }
-    console.log('[DEBUG] Config loaded.');
+    logger.debug('Config loaded.');
   }
   
   if (!config) {
     logger.error('Failed to load valid configuration. Exiting.');
     process.exit(1);
   }
+
+  // Apply configured log level
+  if (config.logLevel) {
+    logger.setLogLevelFromString(config.logLevel);
+    logger.debug(`Log level set to ${config.logLevel}`);
+  }
   
   // Start the console
-  console.log('[DEBUG] Initializing Console...');
+  logger.debug('Initializing Console...');
   const appConsole = new Console(config);
-  console.log('[DEBUG] Starting Console...');
+  logger.debug('Starting Console...');
   await appConsole.start();
 }
 

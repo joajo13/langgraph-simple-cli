@@ -26,6 +26,16 @@ export class Logger {
     this.level = level;
   }
 
+  public setLogLevelFromString(level: string): void {
+    switch (level.toLowerCase()) {
+      case 'debug': this.level = LogLevel.DEBUG; break;
+      case 'info': this.level = LogLevel.INFO; break;
+      case 'warn': this.level = LogLevel.WARN; break;
+      case 'error': this.level = LogLevel.ERROR; break;
+      default: this.level = LogLevel.INFO; break;
+    }
+  }
+
   private formatMessage(level: string, message: string, ...args: any[]): string {
     const timestamp = new Date().toISOString();
     return `[${timestamp}] [${level}] ${message}`;

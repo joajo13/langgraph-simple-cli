@@ -42,7 +42,9 @@ export function loadConfig(): Config | null {
   if (process.env.OPENAI_API_KEY) loadedConfig.openaiApiKey = process.env.OPENAI_API_KEY;
   if (process.env.ANTHROPIC_API_KEY) loadedConfig.anthropicApiKey = process.env.ANTHROPIC_API_KEY;
   if (process.env.GOOGLE_API_KEY) loadedConfig.googleApiKey = process.env.GOOGLE_API_KEY;
+  if (process.env.GOOGLE_API_KEY) loadedConfig.googleApiKey = process.env.GOOGLE_API_KEY;
   if (process.env.TAVILY_API_KEY) loadedConfig.tavilyApiKey = process.env.TAVILY_API_KEY;
+  if (process.env.LOG_LEVEL) loadedConfig.logLevel = process.env.LOG_LEVEL;
   
   // Google OAuth
   if (process.env.GOOGLE_CLIENT_ID) loadedConfig.googleClientId = process.env.GOOGLE_CLIENT_ID;
@@ -66,6 +68,13 @@ export function saveConfig(config: Config): void {
   }
   // We only save to file, we don't write to .env
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+}
+
+export function clearConfig(): void {
+  if (fs.existsSync(CONFIG_FILE)) {
+    fs.unlinkSync(CONFIG_FILE);
+    logger.info(`Deleted config file at ${CONFIG_FILE}`);
+  }
 }
 
 export function getConfigPath(): string {

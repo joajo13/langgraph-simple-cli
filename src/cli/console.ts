@@ -30,7 +30,10 @@ export class Console {
    * Starts the interactive console session.
    */
   async start(): Promise<void> {
+    await this.assistant.init();
+    this.renderer.startThinking(); // Show quick loading indicator
     this.renderer.clear();
+    this.renderer.stopThinking(); // Ensure stopped before welcome
     this.renderer.printWelcome(this.config.llmProvider, this.config.llmModel);
     console.log(chalk.gray(`  Session ID: ${this.threadId}`));
     console.log();
@@ -93,24 +96,37 @@ export class Console {
     // Regular chat
     try {
       this.renderer.startThinking();
-      const response = await this.assistant.chat(input, this.threadId);
+      
+      // Add a timeout to prevent infinite hanging
+      const timeoutPromise = new Promise<string>((_, reject) => {
+        setTimeout(() => reject(new Error('Request timed out after 60 seconds')), 60000);
+      });
+
+      const response = await Promise.race([
+        this.assistant.chat(input, this.threadId),
+        timeoutPromise
+      ]);
+
       this.renderer.printResponse(response);
 
       // Check for Gmail authentication success to reload tools
       if (response && response.includes('Successfully authenticated with Gmail')) {
         logger.info('Gmail authentication detected. Reloading tools...');
-        this.updateConfig(this.config);
+        await this.updateConfig(this.config);
         console.log(chalk.green('   🔄 System updated with Gmail capabilities.'));
       }
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.renderer.printError(errorMessage);
+    } finally {
+      this.renderer.stopThinking();
     }
   }
   
-  private updateConfig(newConfig: Config): void {
+  private async updateConfig(newConfig: Config): Promise<void> {
     this.config = newConfig;
     this.assistant = new ResearchAssistant(newConfig);
+    await this.assistant.init();
     this.renderer.printWelcome(newConfig.llmProvider, newConfig.llmModel);
   }
 }
