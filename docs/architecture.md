@@ -1,37 +1,65 @@
-# Architecture Overview
+# Arquitectura del Sistema
 
-## Design Principles
+Este documento describe la arquitectura y los principios de diseño que rigen el **Research Assistant**.
 
-This project follows **Clean Architecture** and **SOLID** principles to ensure scalability and maintainability.
+## Principios de Diseño
 
-### 1. Hexagonal / Modular Structure
-The code is organized by feature/domain modules rather than technical layers alone.
-*   `src/nodes`: Core logic units of the graph.
-*   `src/tools`: distinct capabilities (plugins).
-*   `src/config`: Configuration domain.
-*   `src/llm`: AI Provider abstraction.
+El proyecto sigue los principios de **Arquitectura Limpia (Clean Architecture)** y **SOLID** para asegurar que el sistema sea escalable, testeable y fácil de mantener.
 
-### 2. Dependency Injection
-Dependencies (like `Config` and `Logger`) are injected into components (Nodes, Tools) rather than being hardcoded or imported as singletons where possible (though `logger` is a singleton for convenience).
-*   `RouterNode` receives `ToolsInfo`.
-*   `Graph` receives `Config`.
+### 1. Estructura Modular (Hexagonal)
+El código está organizado por módulos de dominio/funcionalidad en lugar de capas técnicas puras:
+- `src/skills`: Define las capacidades del agente (Skills y Tools).
+- `src/nodes`: Unidades de lógica del grafo de estados.
+- `src/config`: Manejo de configuración y persistencia.
+- `src/llm`: Abstracción de proveedores de IA.
+- `src/cli`: Interfaz de usuario de consola.
 
-### 3. Strict Typing
-*   **No `any`**: We use `unknown` for errors.
-*   **Zod Schemas**: Used for Configuration validation and Structured Outputs from LLMs.
+### 2. Inyección de Dependencias
+Las dependencias (como la `Config` o el `LLM`) se inyectan en los componentes para facilitar el desacoplamiento y las pruebas unitarias.
 
-## Data Flow
+### 3. Tipado Estricto con Zod
+- **Validación de Runtime**: Usamos Schemas de Zod para validar la configuración cargada desde archivos.
+- **Salidas Estructuradas**: Las decisiones del Router y las herramientas usan Zod para asegurar que el LLM responda con el formato correcto.
 
-1.  **Input**: User types a message in CLI.
-2.  **State**: `AgentState` object tracks messages and tool results.
-3.  **Router**: Analyzes state -> Decides `tools` or `direct`.
-4.  **Execution**:
-    *   If `tools`: `ToolExecutor` runs tools in parallel -> Updates state.
-    *   If `direct`: `Generator` synthesizes response.
-5.  **Output**: Response printed to CLI.
+---
 
-## Key Technologies
-*   **LangGraph**: State machine orchestration.
-*   **LangChain**: LLM and Tool abstractions.
-*   **Zod**: Validation.
-*   **TypeScript**: Static analysis.
+## Flujo de Datos
+
+El ciclo de vida de una consulta sigue este flujo:
+
+1. **Entrada**: El usuario escribe un mensaje en la CLI (`src/cli/console.ts`).
+2. **Estado**: Se inicializa o actualiza el `AgentState` (`src/state.ts`), que rastrea el historial de mensajes y resultados de herramientas.
+3. **Orquestación (LangGraph)**:
+   - **Router Node**: Analiza la intención del usuario y decide si requiere herramientas.
+   - **Tool Executor Node**: Ejecuta las herramientas seleccionadas en paralelo.
+   - **Generator Node**: Sintetiza la respuesta final basándose en los resultados obtenidos.
+4. **Salida**: La respuesta se imprime por consola mediante el `Renderer`.
+
+---
+
+## Tecnologías Clave
+
+| Tecnología | Propósito |
+|------------|-----------|
+| **LangGraph** | Orquestación de máquinas de estado para el agente. |
+| **LangChain** | Abstracción de modelos y herramientas de IA. |
+| **TypeScript** | Lenguaje principal con tipado estático. |
+| **Zod** | Esquemas y validación de datos. |
+| **Docker** | Contenerización y despliegue consistente. |
+
+---
+
+## Diagrama de Carpetas Principal
+
+```text
+src/
+├── cli/           # Interfaz de comandos (REPL, Renderer, Commmands)
+├── config/        # Setup Wizard, Validadores y Config Store
+├── llm/           # Factory para OpenAI, Anthropic y Google
+├── nodes/         # Nodos del grafo (Router, Executor, Generator)
+├── skills/        # Core de habilidades y catálogo modular
+├── tools/         # Implementaciones de herramientas base
+├── graph.ts       # Definición y compilación del flujo LangGraph
+├── state.ts       # Definición del esquema del estado del agente
+└── index.ts       # Punto de entrada principal
+```
