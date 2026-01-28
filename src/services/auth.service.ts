@@ -117,8 +117,80 @@ export class AuthService {
             const code = urlParams.searchParams.get('code');
 
             if (code) {
+              const html = `
+              <!DOCTYPE html>
+              <html lang="es">
+              <head>
+                  <meta charset="UTF-8">
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                  <title>Autenticación Exitosa - Simple CLI</title>
+                  <style>
+                      :root {
+                          --primary: #4285F4;
+                          --success: #34A853;
+                          --bg: #f8f9fa;
+                          --text: #202124;
+                      }
+                      body {
+                          font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+                          background-color: var(--bg);
+                          color: var(--text);
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                          height: 100vh;
+                          margin: 0;
+                          -webkit-font-smoothing: antialiased;
+                      }
+                      .card {
+                          background: white;
+                          padding: 40px;
+                          border-radius: 12px;
+                          box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+                          text-align: center;
+                          max-width: 400px;
+                          width: 90%;
+                          animation: fadeIn 0.5s ease-out;
+                      }
+                      @keyframes fadeIn {
+                          from { opacity: 0; transform: translateY(10px); }
+                          to { opacity: 1; transform: translateY(0); }
+                      }
+                      .icon {
+                          width: 64px;
+                          height: 64px;
+                          background: var(--success);
+                          color: white;
+                          border-radius: 50%;
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                          font-size: 32px;
+                          margin: 0 auto 24px;
+                      }
+                      h1 { font-size: 24px; margin: 0 0 12px; font-weight: 500; }
+                      p { color: #5f6368; line-height: 1.5; margin: 0 0 24px; }
+                      .close-hint { font-size: 13px; color: #9aa0a6; }
+                  </style>
+              </head>
+              <body>
+                  <div class="card">
+                      <div class="icon">✓</div>
+                      <h1>¡Autenticación completada!</h1>
+                      <p>Has vinculado correctamente tu cuenta de Google con <strong>Simple CLI</strong>.</p>
+                      <p class="close-hint">Ya puedes cerrar esta ventana de forma segura y volver a tu terminal.</p>
+                  </div>
+                  <script>
+                      // Intentar cerrar la ventana automáticamente tras 3 segundos
+                      setTimeout(() => {
+                          window.close();
+                      }, 3000);
+                  </script>
+              </body>
+              </html>
+              `;
               res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-              res.end('<h1>Autenticación exitosa</h1><p>Puedes cerrar esta ventana y volver a la terminal.</p><script>window.close()</script>');
+              res.end(html);
               
               const success = await this.getTokensFromCode(code);
               server.close();
@@ -134,9 +206,28 @@ export class AuthService {
              res.end('Not found');
           }
         } catch (e) {
-          logger.error('Error in local auth server', e);
-          res.writeHead(500);
-          res.end('Error interno');
+          const errorHtml = `
+          <!DOCTYPE html>
+          <html lang="es">
+          <head>
+              <meta charset="UTF-8">
+              <style>
+                  body { font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; background: #fff5f5; }
+                  .card { padding: 40px; border-radius: 12px; background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.1); text-align: center; border-top: 5px solid #e53e3e; }
+                  h1 { color: #c53030; margin-top: 0; }
+              </style>
+          </head>
+          <body>
+              <div class="card">
+                  <h1>Error de Autenticación</h1>
+                  <p>Hubo un problema al intentar autenticar tu cuenta.</p>
+                  <p>Por favor, inténtalo de nuevo en la terminal.</p>
+              </div>
+          </body>
+          </html>
+          `;
+          res.writeHead(500, { 'Content-Type': 'text/html; charset=utf-8' });
+          res.end(errorHtml);
           server.close();
           resolve(false);
         }

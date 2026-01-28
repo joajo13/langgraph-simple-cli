@@ -11,7 +11,7 @@ export const ConfigSchema = z.object({
   // LLM Configuration
   llmProvider: LLMProviderSchema.default('openai'),
   llmModel: z.string().min(1).default('gpt-4o-mini'),
-  logLevel: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+  logLevel: z.enum(['debug', 'info', 'warn', 'error', 'silent']).default('info'),
   
   // API Keys (Optional here because they might be loaded conditionally, 
   // but strictly checked when specific provider is active in the Service)
