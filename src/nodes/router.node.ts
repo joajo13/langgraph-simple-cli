@@ -30,6 +30,8 @@ export function createRouterNode(llm: BaseChatModel, availableTools: ToolInfo[],
     .filter(t => t.available)
     .map(t => `- ${t.name}: ${t.description}`)
     .join('\n');
+
+  logger.info(`[Router] Initialized with tools: ${availableTools.map(t => t.name).join(', ')}`);
   
   const systemPrompt = `You are an intelligent routing agent. Your job is to decide if the user's request requires using external tools.
 
@@ -47,6 +49,14 @@ DECISION LOGIC:
 IMPORTANT:
 - If the user asks for "weather", "news", "price", "time", "who is", "what is" -> YOU MUST USE A TOOL.
 
+- If the user asks for "weather", "news", "price", "time", "who is", "what is" -> YOU MUST USE A TOOL.
+
+CALENDAR TOOL SELECTION (CRITICAL):
+- "mis eventos", "agenda", "my events", "qué tengo hoy", "what do I have today" -> USE 'calendar_get_events'. NEVER use web_search for this.
+- "create event", "agendar", "nueva reunion" -> USE 'get_datetime' then 'calendar_create_event'.
+- "edit event", "cambiar evento", "modificar" -> USE 'calendar_get_events' FIRST (to get ID), then 'calendar_update_event'.
+- "delete event", "borrar evento", "eliminar", "cancelar" -> USE 'calendar_get_events' FIRST (to get ID), then 'calendar_delete_event'. DO NOT just rename the event; DELETE IT using the tool.
+
 GMAIL TOOL SELECTION (CRITICAL):
 - "read emails", "leer emails", "mis correos", "inbox", "check mail" -> USE 'gmail_search' with query like "is:unread" or "newer_than:1d". NEVER use gmail_auth for this.
 - "send email", "enviar correo" -> USE 'gmail_send_message'. NEVER use gmail_auth for this.
@@ -58,6 +68,11 @@ GMAIL TOOL SELECTION (CRITICAL):
 - Be aggressive in using tools for any factual query.
 - CRITICAL: When using email tools (e.g. 'gmail_send_message'), YOU MUST use the EXACT email addresses and content provided by the user. Do NOT use placeholders.
 - IMPORTANT: Sending an email sends a NEW message. It DOES NOT send an existing draft by ID. If the user says "Send the draft", you must construct a send_message call with the same content.
+
+CHAINING TOOLS (CRITICAL):
+- If the user's request involves multiple steps (e.g. "Check time then create event"), and you have only completed the first step (e.g. "get_datetime"), YOU MUST SELECT THE NEXT TOOL (e.g. "calendar_create_event").
+- Do NOT stop to report the intermediate result unless explicitly asked.
+- CONTINUE until the full user request is satisfied.
 
 OUTPUT FORMAT:
 Return valid JSON matching the schema.

@@ -1,7 +1,7 @@
 import { DynamicStructuredTool } from '@langchain/core/tools';
 import { z } from 'zod';
-import { SkillRegistry } from './registry';
-import { Config } from '../../config';
+import { SkillRegistry } from '../skills/core/registry';
+import { Config } from '../config';
 
 /**
  * Creates tools for the agent to access skills on-demand.

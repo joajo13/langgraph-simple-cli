@@ -3,7 +3,7 @@ import { AgentState } from './state';
 import { Config } from './config';
 import { createLLM } from './llm';
 import { skillRegistry, loadAndRegisterSkills } from './skills'; 
-import { createSkillAccessTools } from './skills/core/skill-tools';
+import { createSkillAccessTools } from './tools/skills.tools';
 import { createRouterNode, createToolExecutorNode, createGeneratorNode } from './nodes';
 import { ToolInfo } from './tools';
 
@@ -25,14 +25,20 @@ export async function buildGraph(config: Config) {
   const availableSkills = skillRegistry.getSkillsIndex(config);
   const skillListStr = availableSkills.map(s => `${s.icon} ${s.name}: ${s.description}`).join('\n');
   
+  // Build detailed system instructions from all skills
+  const detailedSkillInstructions = skillRegistry.getCombinedSystemInstructions(config);
+
   const systemInstructions = `You are a helpful assistant.
 You have access to several specialized skills to help you with tasks.
 
 Available Skills:
 ${skillListStr}
 
+SKILL INSTRUCTIONS & RULES:
+${detailedSkillInstructions}
+
 IMPORTANT RULES:
-1. Before using any skill for the first time, you MUST call \`read_skill(skillName:"name")\` to understand its rules and instructions.
+1. Follow the specific INSTRUCTIONS & RULES provided above for each skill.
 2. If you are unsure what to do, call \`list_skills\` to see all your capabilities.
 3. Do NOT hallucinate tool names. Only use the ones listed in your available tools.`;
   
@@ -73,8 +79,8 @@ IMPORTANT RULES:
       }
     )
     
-    // After tool execution, generate response
-    .addEdge('toolExecutor', 'generator')
+    // After tool execution, loop back to router to decide next steps
+    .addEdge('toolExecutor', 'router')
     
     // Generator ends the flow
     .addEdge('generator', END);
