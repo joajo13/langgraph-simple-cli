@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  research-assistant:
+    build: .
+    container_name: research-assistant
+    stdin_open: true      # -i: Keep stdin open
+    tty: true             # -t: Allocate pseudo-TTY
+    volumes:
+      - config-data:/root/.research-assistant
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+
+volumes:
+  config-data:
+    name: research-assistant-config
