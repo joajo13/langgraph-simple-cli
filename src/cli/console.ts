@@ -1,28 +1,25 @@
-import Enquirer from 'enquirer';
+import * as p from '@clack/prompts';
 import chalk from 'chalk';
 import * as crypto from 'crypto';
 import { Renderer } from './renderer';
 import { handleCommand, CommandContext } from './commands';
-import { ResearchAssistant } from '../graph';
+import { SimpleAssistant } from '../graph';
 import { Config } from '../config';
 import { logger } from '../logger';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const { Input } = Enquirer as any;
 
 /**
  * Console controller managing the REPL loop.
  */
 export class Console {
   private renderer: Renderer;
-  private assistant: ResearchAssistant;
+  private assistant: SimpleAssistant;
   private config: Config;
   private threadId: string;
   
   constructor(config: Config) {
     this.config = config;
     this.renderer = new Renderer();
-    this.assistant = new ResearchAssistant(config);
+    this.assistant = new SimpleAssistant(config);
     this.threadId = crypto.randomUUID();
   }
   
@@ -31,40 +28,71 @@ export class Console {
    */
   async start(): Promise<void> {
     await this.assistant.init();
-    this.renderer.startThinking(); // Show quick loading indicator
+    p.log.step(chalk.gray(`Session ID: ${this.threadId}`));
+    
+    // Enter alternate screen buffer for full-screen experience
+    this.enterAlternateScreen();
     this.renderer.clear();
-    this.renderer.stopThinking(); // Ensure stopped before welcome
     this.renderer.printWelcome(this.config.llmProvider, this.config.llmModel);
-    console.log(chalk.gray(`  Session ID: ${this.threadId}`));
-    console.log();
+    
+    // Set up cleanup on exit
+    this.setupExitHandlers();
     
     while (true) {
       try {
-        const prompt = new Input({
-          name: 'message',
-          message: 'You'
+        const input = await p.text({
+          message: chalk.cyan('What is on your mind?'),
+          placeholder: 'Type a message or /help...',
+          validate: (value) => {
+            if (!value || value.length === 0) return 'Please enter a message.';
+          }
         });
 
-        const input: string = (await prompt.run()).trim();
-        
-        if (!input) {
-          continue;
+        if (p.isCancel(input)) {
+          this.renderer.printGoodbye();
+          this.exitAlternateScreen();
+          process.exit(0);
         }
-        
-        await this.handleInput(input);
+
+        const trimmedInput = (input as string).trim();
+        await this.handleInput(trimmedInput);
       } catch (error: unknown) {
-        if (error === '') {
-          // Enquirer throws empty string on helper cancellation sometimes
-          return;
-        }
-        
         console.log(chalk.red('\nSession ended.'));
         if (error instanceof Error && error.message) {
             logger.debug(`debug output: ${error.message}`);
         }
+        this.exitAlternateScreen();
         process.exit(0);
       }
     }
+  }
+  
+  /**
+   * Enters the terminal's alternate screen buffer.
+   */
+  private enterAlternateScreen(): void {
+    process.stdout.write('\x1b[?1049h');
+    process.stdout.write('\x1b[H');
+  }
+
+  /**
+   * Exits the terminal's alternate screen buffer and restores previous state.
+   */
+  private exitAlternateScreen(): void {
+    process.stdout.write('\x1b[?1049l');
+  }
+
+  /**
+   * Set up signal handlers to ensure we exit the alternate screen buffer cleanly.
+   */
+  private setupExitHandlers(): void {
+    const cleanup = () => {
+      this.exitAlternateScreen();
+      process.exit(0);
+    };
+
+    process.on('SIGINT', cleanup);
+    process.on('SIGTERM', cleanup);
   }
   
   /**
@@ -87,15 +115,15 @@ export class Console {
       if (input.trim() === '/new') {
         this.threadId = crypto.randomUUID();
         this.renderer.clear();
-        console.log(chalk.green(`  ✨ New session started (${this.threadId})`));
-        console.log();
+        p.log.success(chalk.green(`✨ New session started (${this.threadId})`));
         return;
       }
     }
     
     // Regular chat
+    const s = p.spinner();
     try {
-      this.renderer.startThinking();
+      s.start(chalk.yellow('Thinking...'));
       
       // Add a timeout to prevent infinite hanging
       const timeoutPromise = new Promise<string>((_, reject) => {
@@ -107,25 +135,25 @@ export class Console {
         timeoutPromise
       ]);
 
+      s.stop(chalk.green('Done!'));
       this.renderer.printResponse(response);
 
       // Check for Gmail authentication success to reload tools
       if (response && response.includes('Successfully authenticated with Gmail')) {
         logger.info('Gmail authentication detected. Reloading tools...');
         await this.updateConfig(this.config);
-        console.log(chalk.green('   🔄 System updated with Gmail capabilities.'));
+        p.log.success(chalk.green('🔄 System updated with Gmail capabilities.'));
       }
     } catch (error: unknown) {
+      s.stop(chalk.red('Error'));
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.renderer.printError(errorMessage);
-    } finally {
-      this.renderer.stopThinking();
     }
   }
   
   private async updateConfig(newConfig: Config): Promise<void> {
     this.config = newConfig;
-    this.assistant = new ResearchAssistant(newConfig);
+    this.assistant = new SimpleAssistant(newConfig);
     await this.assistant.init();
     this.renderer.printWelcome(newConfig.llmProvider, newConfig.llmModel);
   }
