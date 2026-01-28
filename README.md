@@ -1,19 +1,19 @@
-# Research Assistant 🔬
+# Simple CLI ✨
 
-> **Enterprise Edition**: Fully Refactored, Strictly Typed, and Documented.
+> **Agentic Ecosystem**: Fully Refactored, Strictly Typed, and Documented.
 
-A multi-LLM research assistant built with **LangGraph**, featuring parallel tool execution, strict validation, and robust error handling.
+A modern, fast multi-LLM agent built with **LangGraph**, featuring a sleek persistent CLI, parallel tool execution, and robust error handling.
 
 ## Features
 
 - 🤖 **Multi-LLM Support**: OpenAI, Anthropic, Google Gemini.
-- 🔧 **5 Powerful Tools**: Calculator, DateTime, Wikipedia, Web Search, URL Reader.
+- 🔧 **Registered Capabilities**: Calculator, Gmail, Wikipedia, Web Search, URL Reader.
 - ⚡ **Parallel Execution**: Tools run in parallel for maximum efficiency.
-- 🛡️ **Enterprise Grade**:
+- 🛡️ **Modern CLI**:
+    - **@clack/prompts**: Beautiful and persistent UI with borders and spinners.
     - **Strict Typing**: Full TypeScript coverage with Zod validation.
     - **Clean Architecture**: Modular structure with Dependency Injection.
-    - **Robust Logging**: Centralized logging system.
-- ⚙️ **Flexible Config**: Support for `.env` files and interactive wizard.
+- ⚙️ **Flexible Config**: Support for `.env` files and an interactive wizard.
 
 ## Quick Start
 
