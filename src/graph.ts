@@ -25,7 +25,7 @@ export async function buildGraph(config: Config) {
   const availableSkills = skillRegistry.getSkillsIndex(config);
   const skillListStr = availableSkills.map(s => `${s.icon} ${s.name}: ${s.description}`).join('\n');
   
-  const systemInstructions = `You are a helpful research assistant.
+  const systemInstructions = `You are a helpful assistant.
 You have access to several specialized skills to help you with tasks.
 
 Available Skills:
@@ -86,14 +86,14 @@ IMPORTANT RULES:
 }
 
 /**
- * ResearchAssistant class acting as a facade for the graph.
+ * SimpleAssistant class acting as a facade for the graph.
  */
-export class ResearchAssistant {
+export class SimpleAssistant {
   private graph: Awaited<ReturnType<typeof buildGraph>> | null = null;
   private config: Config;
   
   /**
-   * Initializes the Research Assistant.
+   * Initializes the Simple Assistant.
    * @param config - Configuration object.
    */
   constructor(config: Config) {
@@ -117,7 +117,7 @@ export class ResearchAssistant {
    */
   async chat(message: string, threadId: string): Promise<string> {
     if (!this.graph) {
-        throw new Error("ResearchAssistant not initialized. Call init() first.");
+        throw new Error("SimpleAssistant not initialized. Call init() first.");
     }
     const result = await this.graph.invoke(
       { messages: [{ role: 'user', content: message }] },

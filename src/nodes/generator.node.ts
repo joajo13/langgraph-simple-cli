@@ -9,7 +9,7 @@ import { AgentState } from '../state';
  * @returns A state update function.
  */
 export function createGeneratorNode(llm: BaseChatModel) {
-  const systemPrompt = `You are a helpful research assistant. You help users find information, make calculations, and answer questions.
+  const systemPrompt = `You are a helpful simple assistant. You help users find information, make calculations, and answer questions.
 
 When you have tool results, synthesize them into a clear, helpful response. Always:
 1. Be concise but complete
