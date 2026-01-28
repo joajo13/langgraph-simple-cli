@@ -8,17 +8,21 @@ import { logger } from './logger';
 async function main() {
   let config;
   
+  console.log('[DEBUG] Starting main...');
   // Check if config exists or env vars are set
   // If not, run setup wizard interactively
   if (!configExists()) {
+    console.log('[DEBUG] Config not found, running wizard...');
     config = await runSetupWizard();
   } else {
+    console.log('[DEBUG] Loading config...');
     config = loadConfig();
     if (!config) {
       // Config load failed (validation error), prompt to setup again
       logger.warn('Configuration invalid or missing. Starting setup wizard...');
       config = await runSetupWizard();
     }
+    console.log('[DEBUG] Config loaded.');
   }
   
   if (!config) {
@@ -27,7 +31,9 @@ async function main() {
   }
   
   // Start the console
+  console.log('[DEBUG] Initializing Console...');
   const appConsole = new Console(config);
+  console.log('[DEBUG] Starting Console...');
   await appConsole.start();
 }
 

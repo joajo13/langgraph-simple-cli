@@ -9,6 +9,7 @@ import {
   AVAILABLE_MODELS
 } from './config-store';
 import { validateLLMKey, validateTavilyKey } from './validators';
+import { AuthService } from '../services/auth.service';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const { Select, Input } = Enquirer as any;
@@ -111,6 +112,46 @@ async function inputTavilyKey(): Promise<string | undefined> {
   }
 }
 
+async function setupGmail(): Promise<Partial<Config>> {
+  console.log(chalk.yellow('\n5️⃣  Integración con Gmail (Opcional):'));
+  console.log(chalk.gray('   Necesitas Client ID y Secret desde Google Cloud Console.'));
+  
+  const confirmPrompt = new Select({
+    name: 'setup',
+    message: '¿Deseas configurar Gmail para leer/enviar correos?',
+    choices: ['Si', 'No']
+  });
+  
+  const setup = await confirmPrompt.run() === 'Si';
+  if (!setup) return {};
+
+  const idPrompt = new Input({ message: 'Google Client ID', name: 'clientId' });
+  const googleClientId = ((await idPrompt.run()) as string).trim();
+  
+  const secretPrompt = new Input({ message: 'Google Client Secret', name: 'clientSecret' });
+  const googleClientSecret = ((await secretPrompt.run()) as string).trim();
+
+  // Validate or try login
+   const loginPrompt = new Select({
+    name: 'login',
+    message: '¿Iniciar sesión ahora para generar tokens?',
+    choices: ['Si', 'No - Hacerlo luego']
+  });
+  
+  if (await loginPrompt.run() === 'Si') {
+      const tempConfig = {
+          googleClientId,
+          googleClientSecret,
+          gmailRedirectUri: 'http://localhost:3000/oauth2callback'
+      } as Config;
+      
+      const auth = new AuthService(tempConfig);
+      await auth.loginWithLocalServer();
+  }
+  
+  return { googleClientId, googleClientSecret };
+}
+
 export async function runSetupWizard(): Promise<Config> {
   console.clear();
   console.log(chalk.cyan('╭──────────────────────────────────────────────╮'));
@@ -124,6 +165,7 @@ export async function runSetupWizard(): Promise<Config> {
     const model = await selectModel(provider);
     const llmApiKey = await inputApiKey(provider);
     const tavilyApiKey = await inputTavilyKey();
+    const gmailConfig = await setupGmail();
     
     const config: Config = {
       llmProvider: provider,
@@ -131,7 +173,8 @@ export async function runSetupWizard(): Promise<Config> {
       tavilyApiKey,
       gmailRedirectUri: 'http://localhost:3000/oauth2callback',
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
+      ...gmailConfig
     };
     
     // Set the appropriate API key
@@ -155,6 +198,7 @@ export async function runSetupWizard(): Promise<Config> {
     console.log(chalk.cyan('│') + chalk.white(`  Provider: ${provider.padEnd(32)}`) + chalk.cyan('│'));
     console.log(chalk.cyan('│') + chalk.white(`  Model:    ${model.padEnd(32)}`) + chalk.cyan('│'));
     console.log(chalk.cyan('│') + chalk.white(`  Tavily:   ${tavilyApiKey ? '✅ Configurado' : '❌ No configurado'}`.padEnd(44)) + chalk.cyan('│'));
+    console.log(chalk.cyan('│') + chalk.white(`  Gmail:    ${gmailConfig.googleClientId ? '✅ Configurado' : '❌ No configurado'}`.padEnd(44)) + chalk.cyan('│'));
     console.log(chalk.cyan('╰──────────────────────────────────────────────╯'));
     console.log();
     
