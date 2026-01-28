@@ -2,7 +2,7 @@ import { StateGraph, END, START, MemorySaver } from '@langchain/langgraph';
 import { AgentState } from './state';
 import { Config } from './config';
 import { createLLM } from './llm';
-import { skillRegistry } from './skills'; 
+import { skillRegistry, loadAndRegisterSkills } from './skills'; 
 import { createSkillAccessTools } from './skills/core/skill-tools';
 import { createRouterNode, createToolExecutorNode, createGeneratorNode } from './nodes';
 import { ToolInfo } from './tools';
@@ -13,7 +13,7 @@ import { ToolInfo } from './tools';
  * @param config - The application configuration.
  * @returns A compiled StateGraph ready for invocation.
  */
-export function buildGraph(config: Config) {
+export async function buildGraph(config: Config) {
   const llm = createLLM(config);
   
   // Get active tools and skill access tools
@@ -89,7 +89,7 @@ IMPORTANT RULES:
  * ResearchAssistant class acting as a facade for the graph.
  */
 export class ResearchAssistant {
-  private graph: ReturnType<typeof buildGraph>;
+  private graph: Awaited<ReturnType<typeof buildGraph>> | null = null;
   private config: Config;
   
   /**
@@ -98,7 +98,15 @@ export class ResearchAssistant {
    */
   constructor(config: Config) {
     this.config = config;
-    this.graph = buildGraph(config);
+  }
+
+  /**
+   * Initialize the assistant by loading skills and building the graph.
+   */
+  async init() {
+    // Load skills dynamically
+    await loadAndRegisterSkills();
+    this.graph = await buildGraph(this.config);
   }
   
   /**
@@ -108,6 +116,9 @@ export class ResearchAssistant {
    * @returns The assistant's response.
    */
   async chat(message: string, threadId: string): Promise<string> {
+    if (!this.graph) {
+        throw new Error("ResearchAssistant not initialized. Call init() first.");
+    }
     const result = await this.graph.invoke(
       { messages: [{ role: 'user', content: message }] },
       { configurable: { thread_id: threadId } }

@@ -1,18 +1,18 @@
 import { skillRegistry } from "./core/registry";
-import { GmailSkill } from "./gmail";
-import { WebSearchSkill } from "./web-search";
-import { CalculatorSkill } from "./calculator";
-import { WikipediaSkill } from "./wikipedia";
-import { DateTimeSkill } from "./datetime";
-import { UrlReaderSkill } from "./url-reader";
+import { SkillLoader } from "./loader";
+import * as path from 'path';
 
-// Register all skills
-skillRegistry.register(new GmailSkill());
-skillRegistry.register(new WebSearchSkill());
-skillRegistry.register(new CalculatorSkill());
-skillRegistry.register(new WikipediaSkill());
-skillRegistry.register(new DateTimeSkill());
-skillRegistry.register(new UrlReaderSkill());
+export async function loadAndRegisterSkills(rootDir?: string) {
+  // Use provided rootDir or default to current directory
+  const skillsDir = rootDir || __dirname;
+  const skills = await SkillLoader.loadSkills(skillsDir);
+  
+  for (const skill of skills) {
+    skillRegistry.register(skill);
+  }
+  
+  return skillRegistry;
+}
 
 export { skillRegistry };
 export * from "./core/skill";

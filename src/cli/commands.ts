@@ -8,7 +8,7 @@ import { reconfigureWizard, Config } from '../config';
 export interface CommandContext {
   renderer: Renderer;
   assistant: ResearchAssistant;
-  onConfigChange: (config: Config) => void;
+  onConfigChange: (config: Config) => void | Promise<void>;
 }
 
 /**
@@ -35,7 +35,7 @@ export async function handleCommand(
     
     case '/config':
       const newConfig = await reconfigureWizard();
-      context.onConfigChange(newConfig);
+      await context.onConfigChange(newConfig);
       // Wait a moment for the new config to settle if needed, or just clear
       context.renderer.clear();
       return true;
