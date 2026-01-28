@@ -1,5 +1,5 @@
 import { Renderer } from './renderer';
-import { ResearchAssistant } from '../graph';
+import { SimpleAssistant } from '../graph';
 import { reconfigureWizard, Config } from '../config';
 
 /**
@@ -7,7 +7,7 @@ import { reconfigureWizard, Config } from '../config';
  */
 export interface CommandContext {
   renderer: Renderer;
-  assistant: ResearchAssistant;
+  assistant: SimpleAssistant;
   onConfigChange: (config: Config) => void | Promise<void>;
 }
 

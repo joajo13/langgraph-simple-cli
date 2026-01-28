@@ -1,30 +1,23 @@
 import chalk from 'chalk';
-import ora, { Ora } from 'ora';
+import * as p from '@clack/prompts';
 import { ToolInfo } from '../tools';
 
 /**
  * Handles all terminal output formatting and display.
- * Uses chalk for colors and ora for spinners.
+ * Uses @clack/prompts for modern CLI aesthetics.
  */
 export class Renderer {
-  private spinner: Ora;
-  
-  constructor() {
-    this.spinner = ora();
-  }
   
   /**
-   * Prints the application header banner.
+   * Prints the application header banner using @clack/prompts intro.
    */
   printHeader(): void {
-    console.log();
-    console.log(chalk.cyan('╭──────────────────────────────────────────────╮'));
-    console.log(chalk.cyan('│') + chalk.bold.white('  🔬 Research Assistant v1.0                  ') + chalk.cyan('│'));
-    console.log(chalk.cyan('│') + chalk.gray('  Powered by LangGraph + Multi-LLM            ') + chalk.cyan('│'));
-    console.log(chalk.cyan('├──────────────────────────────────────────────┤'));
-    console.log(chalk.cyan('│') + chalk.gray('  Type /help for commands                     ') + chalk.cyan('│'));
-    console.log(chalk.cyan('╰──────────────────────────────────────────────╯'));
-    console.log();
+    console.clear();
+    p.intro(chalk.bgCyan.black(' SIMPLE CLI v1.0 '));
+    p.note(
+      chalk.cyan(' ⚛ Multi-LLM Agent Ecosystem ') + '\n' +
+      chalk.gray(' Modern, fast, and simple LangGraph agent.')
+    );
   }
   
   /**
@@ -33,46 +26,15 @@ export class Renderer {
    * @param model - The active model name.
    */
   printWelcome(provider: string, model: string): void {
-    console.log(chalk.gray(`  Using: ${provider} / ${model}`));
-    console.log();
+    p.log.info(chalk.gray(`Connected to ${chalk.white(provider)} / ${chalk.white(model)}`));
   }
   
   /**
-   * Returns the formatted prompt string.
-   */
-  getPrompt(): string {
-    return chalk.green('You: ');
-  }
-  
-  /**
-   * Starts the thinking spinner.
-   */
-  startThinking(): void {
-    this.spinner = ora({
-      text: chalk.yellow(' Thinking...'),
-      spinner: 'dots'
-    }).start();
-  }
-  
-  /**
-   * Stops the thinking spinner.
-   */
-  stopThinking(): void {
-    if (this.spinner.isSpinning) {
-      this.spinner.stop();
-    }
-  }
-  
-  /**
-   * Prints the assistant's response.
+   * Prints the assistant's response in a nice clack box.
    * @param response - The text response to display.
    */
   printResponse(response: string): void {
-    this.stopThinking();
-    console.log();
-    console.log(chalk.blue('🤖 Assistant:'));
-    console.log(chalk.white(`   ${response.split('\n').join('\n   ')}`));
-    console.log();
+    p.note(response, chalk.blue('Assistant'));
   }
   
   /**
@@ -80,26 +42,28 @@ export class Renderer {
    * @param error - The error message to display.
    */
   printError(error: string): void {
-    this.stopThinking();
-    console.log();
-    console.log(chalk.red(`❌ Error: ${error}`));
-    console.log();
+    p.log.error(chalk.red(error));
   }
   
   /**
    * Prints the help menu.
    */
   printHelp(): void {
-    console.log();
-    console.log(chalk.yellow('📖 Available Commands:'));
-    console.log();
-    console.log(chalk.white('   /help    ') + chalk.gray('- Show this help'));
-    console.log(chalk.white('   /tools   ') + chalk.gray('- List available tools'));
-    console.log(chalk.white('   /config  ') + chalk.gray('- Reconfigure API keys (Interactive)'));
-    console.log(chalk.white('   /new     ') + chalk.gray('- Start new session'));
-    console.log(chalk.white('   /clear   ') + chalk.gray('- Clear screen'));
-    console.log(chalk.white('   /exit    ') + chalk.gray('- Exit'));
-    console.log();
+    const commands = [
+      { cmd: '/help', desc: 'Show this help' },
+      { cmd: '/tools', desc: 'List available tools' },
+      { cmd: '/config', desc: 'Reconfigure API keys' },
+      { cmd: '/new', desc: 'Start new session' },
+      { cmd: '/clear', desc: 'Clear screen' },
+      { cmd: '/exit', desc: 'Exit' }
+    ];
+    
+    let helpText = '';
+    commands.forEach(c => {
+      helpText += `${chalk.white(c.cmd.padEnd(10))} ${chalk.gray(c.desc)}\n`;
+    });
+    
+    p.note(helpText.trim(), chalk.yellow('Available Commands'));
   }
   
   /**
@@ -107,32 +71,32 @@ export class Renderer {
    * @param tools - List of ToolInfo objects.
    */
   printTools(tools: ToolInfo[]): void {
-    console.log();
-    console.log(chalk.yellow('🔧 Available Tools:'));
-    console.log();
-    tools.forEach(tool => {
-      const status = tool.available 
-        ? chalk.green('✅') 
-        : chalk.red('❌');
-      console.log(`   ${status} ${tool.icon} ${chalk.white(tool.name.padEnd(15))} ${chalk.gray(tool.description)}`);
+    // Sort tools by availability
+    const sortedTools = [...tools].sort((a, b) => Number(b.available) - Number(a.available));
+
+    let toolsText = '';
+    sortedTools.forEach(tool => {
+      const statusIcon = tool.available ? chalk.green('●') : chalk.red('○');
+      const name = tool.available ? chalk.white(tool.name) : chalk.gray(tool.name);
+      const icon = tool.available ? tool.icon : '🔒';
+      
+      toolsText += ` ${statusIcon} ${icon.padEnd(2)} ${name.padEnd(20)} ${chalk.gray(tool.description)}\n`;
     });
-    console.log();
+    
+    p.note(toolsText.trim(), chalk.yellow('Registered Capabilities'));
   }
   
   /**
    * Prints goodbye message.
    */
   printGoodbye(): void {
-    console.log();
-    console.log(chalk.cyan('👋 Goodbye!'));
-    console.log();
+    p.outro(chalk.cyan('👋 Goodbye! See you soon.'));
   }
   
   /**
    * Clears the console and repaints the header.
    */
   clear(): void {
-    console.clear();
     this.printHeader();
   }
 }

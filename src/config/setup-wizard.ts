@@ -1,6 +1,5 @@
 import chalk from 'chalk';
-import ora from 'ora';
-import Enquirer from 'enquirer';
+import * as p from '@clack/prompts';
 import {
   Config,
   LLMProvider,
@@ -13,158 +12,141 @@ import { AuthService } from '../services/auth.service';
 import { fetchModelsForProvider } from './model-fetcher';
 import { loadConfig, clearConfig } from './config-store';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const { Select, Input } = Enquirer as any;
-
-const PROVIDERS: { name: string; value: LLMProvider; url: string }[] = [
-  { name: 'OpenAI (GPT-4o)', value: 'openai', url: 'https://platform.openai.com/api-keys' },
-  { name: 'Anthropic (Claude)', value: 'anthropic', url: 'https://console.anthropic.com/' },
-  { name: 'Google (Gemini)', value: 'google', url: 'https://aistudio.google.com/apikey' }
+const PROVIDERS: { label: string; value: LLMProvider; url: string }[] = [
+  { label: 'OpenAI (GPT-4o)', value: 'openai', url: 'https://platform.openai.com/api-keys' },
+  { label: 'Anthropic (Claude)', value: 'anthropic', url: 'https://console.anthropic.com/' },
+  { label: 'Google (Gemini)', value: 'google', url: 'https://aistudio.google.com/apikey' }
 ];
 
 async function selectProvider(): Promise<LLMProvider> {
-  console.log(chalk.yellow('\n1️⃣  Selecciona tu proveedor de LLM:'));
-  
-  const prompt = new Select({
-    name: 'provider',
-    message: 'Elige un proveedor',
-    choices: PROVIDERS.map(p => p.name)
+  const answer = await p.select({
+    message: 'Select your LLM provider:',
+    options: PROVIDERS.map(p => ({ label: p.label, value: p.value }))
   });
 
-  const answer = await prompt.run();
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const selected = PROVIDERS.find(p => p.name === answer)!;
-  return selected.value;
+  if (p.isCancel(answer)) {
+    process.exit(0);
+  }
+
+  return answer as LLMProvider;
 }
 
 async function selectModel(provider: LLMProvider, apiKey: string): Promise<string> {
   const defaults = DEFAULT_MODELS[provider];
   const hardcoded = AVAILABLE_MODELS[provider] || [defaults];
   
-  const spinner = ora('   Buscando modelos disponibles...').start();
+  const s = p.spinner();
+  s.start('Fetching available models...');
   const dynamicModels = await fetchModelsForProvider(provider, apiKey);
-  spinner.stop();
+  s.stop('Models fetched.');
   
   // Merge and deduplicate
   const allModels = Array.from(new Set([...hardcoded, ...dynamicModels]));
   
-  console.log(chalk.yellow('\n3️⃣  Selecciona el modelo:'));
-  
   const choices = [
-    ...allModels.map((m: string) => m === defaults ? `${m} (recomendado)` : m),
-    '✏️  Otro (Ingresar manualmente)'
+    ...allModels.map((m: string) => ({ 
+      label: m === defaults ? `${m} (recommended)` : m, 
+      value: m 
+    })),
+    { label: '✏️  Other (Enter manually)', value: 'custom' }
   ];
 
-  const prompt = new Select({
-    name: 'model',
-    message: 'Elige un modelo',
-    choices: choices
+  const answer = await p.select({
+    message: 'Select the model:',
+    options: choices
   });
 
-  const answer: string = await prompt.run();
+  if (p.isCancel(answer)) process.exit(0);
   
-  if (answer === '✏️  Otro (Ingresar manualmente)') {
-     const inputPrompt = new Input({
-       name: 'customModel',
-       message: 'Ingresa el nombre del modelo (ej: gpt-4-32k)'
+  if (answer === 'custom') {
+     const customModel = await p.text({
+       message: 'Enter the model name (e.g., gpt-4-32k)',
+       placeholder: 'gpt-4-turbo'
      });
-     return ((await inputPrompt.run()) as string).trim();
+     if (p.isCancel(customModel)) process.exit(0);
+     return (customModel as string).trim();
   }
 
-  return answer.replace(' (recomendado)', '');
+  return answer as string;
 }
 
 async function inputApiKey(provider: LLMProvider): Promise<string> {
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const providerInfo = PROVIDERS.find(p => p.value === provider)!;
   
-  console.log(chalk.yellow(`\n2️⃣  API Key de ${providerInfo.name.split(' ')[0]}:`));
-  console.log(chalk.gray(`   Obtener en: ${providerInfo.url}`));
+  p.note(`Get your API key at: ${providerInfo.url}`, `API Key for ${providerInfo.label.split(' ')[0]}`);
   
   while (true) {
-    const prompt = new Input({
-      name: 'apiKey',
-      message: 'Ingresa tu API key'
+    const apiKey = await p.text({
+      message: 'Enter your API key:',
+      validate: (value) => {
+        if (!value) return 'API key is required.';
+      }
     });
 
-    const apiKey = ((await prompt.run()) as string).trim();
+    if (p.isCancel(apiKey)) process.exit(0);
     
-    if (!apiKey) {
-      console.log(chalk.red('   ❌ La API key es requerida.'));
-      continue;
-    }
-    
-    const spinner = ora('   Validando...').start();
-    const result = await validateLLMKey(provider, apiKey);
+    const s = p.spinner();
+    s.start('Validating...');
+    const result = await validateLLMKey(provider, apiKey as string);
     
     if (result.valid) {
-      spinner.succeed(chalk.green('   ¡Conectado correctamente!'));
-      return apiKey;
+      s.stop(chalk.green('Connected successfully!'));
+      return apiKey as string;
     } else {
-      spinner.fail(chalk.red(`   Error: ${result.error}`));
+      s.stop(chalk.red(`Error: ${result.error}`));
     }
   }
 }
 
 async function inputTavilyKey(): Promise<string | undefined> {
-  console.log(chalk.yellow('\n4️⃣  Tavily API Key (opcional, para búsqueda web):'));
-  console.log(chalk.gray('   Obtener en: https://tavily.com'));
-  console.log(chalk.gray('   Free tier: 1000 búsquedas/mes'));
-  
-  const prompt = new Input({
-    name: 'apiKey',
-    message: 'Ingresa tu key (Enter para omitir)'
+  const apiKey = await p.text({
+    message: 'Tavily API Key (optional, for web search):',
+    placeholder: 'Enter to skip',
   });
 
-  const apiKey = ((await prompt.run()) as string).trim();
+  if (p.isCancel(apiKey)) process.exit(0);
   
   if (!apiKey) {
-    console.log(chalk.gray('   ⏭️  Omitido - web_search tool no estará disponible'));
+    p.log.warn('Skipped - web_search tool will not be available.');
     return undefined;
   }
   
-  const spinner = ora('   Validando...').start();
-  const result = await validateTavilyKey(apiKey);
+  const s = p.spinner();
+  s.start('Validating...');
+  const result = await validateTavilyKey(apiKey as string);
   
   if (result.valid) {
-    spinner.succeed(chalk.green('   ¡Conectado correctamente!'));
-    return apiKey;
+    s.stop(chalk.green('Connected successfully!'));
+    return apiKey as string;
   } else {
-    spinner.warn(chalk.yellow(`   Advertencia: ${result.error} - continuando sin Tavily`));
+    s.stop(chalk.yellow(`Warning: ${result.error} - continuing without Tavily`));
     return undefined;
   }
 }
 
 async function setupGmail(): Promise<Partial<Config>> {
-  console.log(chalk.yellow('\n5️⃣  Integración con Gmail (Opcional):'));
-  console.log(chalk.gray('   Necesitas Client ID y Secret desde Google Cloud Console.'));
-  
-  const confirmPrompt = new Select({
-    name: 'setup',
-    message: '¿Deseas configurar Gmail para leer/enviar correos?',
-    choices: ['Si', 'No']
+  const setup = await p.confirm({
+    message: 'Do you want to configure Gmail integration?',
+    initialValue: false
   });
   
-  const setup = await confirmPrompt.run() === 'Si';
-  if (!setup) return {};
+  if (p.isCancel(setup) || !setup) return {};
 
-  const idPrompt = new Input({ message: 'Google Client ID', name: 'clientId' });
-  const googleClientId = ((await idPrompt.run()) as string).trim();
+  const googleClientId = await p.text({ message: 'Google Client ID' });
+  if (p.isCancel(googleClientId)) process.exit(0);
   
-  const secretPrompt = new Input({ message: 'Google Client Secret', name: 'clientSecret' });
-  const googleClientSecret = ((await secretPrompt.run()) as string).trim();
+  const googleClientSecret = await p.text({ message: 'Google Client Secret' });
+  if (p.isCancel(googleClientSecret)) process.exit(0);
 
-  // Validate or try login
-   const loginPrompt = new Select({
-    name: 'login',
-    message: '¿Iniciar sesión ahora para generar tokens?',
-    choices: ['Si', 'No - Hacerlo luego']
+  const login = await p.confirm({
+    message: 'Log in now to generate tokens?',
+    initialValue: true
   });
   
-  if (await loginPrompt.run() === 'Si') {
+  if (!p.isCancel(login) && login) {
       const tempConfig = {
-          googleClientId,
-          googleClientSecret,
+          googleClientId: (googleClientId as string).trim(),
+          googleClientSecret: (googleClientSecret as string).trim(),
           gmailRedirectUri: 'http://localhost:3000/oauth2callback'
       } as Config;
       
@@ -172,27 +154,31 @@ async function setupGmail(): Promise<Partial<Config>> {
       await auth.loginWithLocalServer();
   }
   
-  return { googleClientId, googleClientSecret };
+  return { 
+    googleClientId: (googleClientId as string).trim(), 
+    googleClientSecret: (googleClientSecret as string).trim() 
+  };
 }
 
 async function inputLogLevel(): Promise<string> {
-  const prompt = new Select({
-    name: 'logLevel',
-    message: '¿Nivel de Logs?',
-    choices: ['info (Recomendado)', 'debug (Ver todo)', 'warn (Solo alertas)', 'error (Solo errores)']
+  const answer = await p.select({
+    message: 'Select log level:',
+    options: [
+      { label: 'info (Recommended)', value: 'info' },
+      { label: 'debug (Verbose)', value: 'debug' },
+      { label: 'warn (Warnings only)', value: 'warn' },
+      { label: 'error (Errors only)', value: 'error' },
+      { label: 'silent (No logs)', value: 'silent' }
+    ]
   });
   
-  const answer = await prompt.run();
-  return answer.split(' ')[0];
+  if (p.isCancel(answer)) process.exit(0);
+  return answer as string;
 }
 
 export async function runSetupWizard(): Promise<Config> {
-  console.clear();
-  console.log(chalk.cyan('╭──────────────────────────────────────────────╮'));
-  console.log(chalk.cyan('│') + chalk.bold.white('  🔬 Research Assistant - Setup Wizard        ') + chalk.cyan('│'));
-  console.log(chalk.cyan('╰──────────────────────────────────────────────╯'));
-  console.log();
-  console.log(chalk.gray('   Las API keys se guardarán localmente y nunca se comparten.'));
+  p.intro(chalk.bgCyan.black(' SIMPLE CLI - Setup Wizard '));
+  p.log.info(chalk.gray('Keys are stored locally and never shared.'));
   
   try {
     const provider = await selectProvider();
@@ -213,105 +199,85 @@ export async function runSetupWizard(): Promise<Config> {
       ...gmailConfig
     };
     
-    // Set the appropriate API key
     switch (provider) {
-      case 'openai':
-        config.openaiApiKey = llmApiKey;
-        break;
-      case 'anthropic':
-        config.anthropicApiKey = llmApiKey;
-        break;
-      case 'google':
-        config.googleApiKey = llmApiKey;
-        break;
+      case 'openai': config.openaiApiKey = llmApiKey; break;
+      case 'anthropic': config.anthropicApiKey = llmApiKey; break;
+      case 'google': config.googleApiKey = llmApiKey; break;
     }
     
     saveConfig(config);
     
-    console.log(chalk.cyan('\n╭──────────────────────────────────────────────╮'));
-    console.log(chalk.cyan('│') + chalk.bold.green('  ✅ Configuración completada                 ') + chalk.cyan('│'));
-    console.log(chalk.cyan('├──────────────────────────────────────────────┤'));
-    console.log(chalk.cyan('│') + chalk.white(`  Provider: ${provider.padEnd(32)}`) + chalk.cyan('│'));
-    console.log(chalk.cyan('│') + chalk.white(`  Model:    ${model.padEnd(32)}`) + chalk.cyan('│'));
-    console.log(chalk.cyan('│') + chalk.white(`  Model:    ${model.padEnd(32)}`) + chalk.cyan('│'));
-    console.log(chalk.cyan('│') + chalk.white(`  Logs:     ${logLevel.padEnd(32)}`) + chalk.cyan('│'));
-    console.log(chalk.cyan('│') + chalk.white(`  Tavily:   ${tavilyApiKey ? '✅ Configurado' : '❌ No configurado'}`.padEnd(44)) + chalk.cyan('│'));
-    console.log(chalk.cyan('│') + chalk.white(`  Gmail:    ${gmailConfig.googleClientId ? '✅ Configurado' : '❌ No configurado'}`.padEnd(44)) + chalk.cyan('│'));
-    console.log(chalk.cyan('╰──────────────────────────────────────────────╯'));
-    console.log();
+    p.note(
+      `Provider: ${provider}\n` +
+      `Model:    ${model}\n` +
+      `Logs:     ${logLevel}\n` +
+      `Tavily:   ${tavilyApiKey ? '✅ Configured' : '❌ Not configured'}\n` +
+      `Gmail:    ${gmailConfig.googleClientId ? '✅ Configured' : '❌ Not configured'}`,
+      'Configuration Saved'
+    );
+    
+    p.outro(chalk.green('Setup complete! Happy hacking.'));
     
     return config;
   } catch (error) {
-    console.log(chalk.red('\n❌ Configuración cancelada.'));
+    p.log.error(chalk.red('Setup failed or cancelled.'));
     process.exit(1);
   }
 }
 
 export async function reconfigureWizard(): Promise<Config> {
-  console.clear();
-  console.log(chalk.cyan('╭──────────────────────────────────────────────╮'));
-  console.log(chalk.cyan('│') + chalk.bold.white('  ⚙️  Configuración del Agente                 ') + chalk.cyan('│'));
-  console.log(chalk.cyan('╰──────────────────────────────────────────────╯'));
-  console.log();
+  p.intro(chalk.bgCyan.black(' Agent Settings '));
 
   const currentConfig = loadConfig();
   if (!currentConfig) {
       return runSetupWizard();
   }
 
-  const prompt = new Select({
-    name: 'action',
-    message: '¿Qué deseas hacer?',
-    choices: [
-      '🔄 Reconfigurar todo (Wizard completo)',
-      '🧠 Cambiar Modelo LLM',
-      '🐞 Configurar Logs',
-      '🔑 Actualizar API Keys',
-      '🗑️  Eliminar/Resetear Configuración',
-      '↩️  Cancelar'
+  const action = await p.select({
+    message: 'What would you like to do?',
+    options: [
+      { label: '🔄 Reconfigure everything', value: 'full' },
+      { label: '🧠 Change LLM Model', value: 'model' },
+      { label: '🐞 Configure Logs', value: 'logs' },
+      { label: '🔑 Update API Keys', value: 'keys' },
+      { label: '🗑️  Reset Configuration', value: 'reset' },
+      { label: '↩️  Cancel', value: 'cancel' }
     ]
   });
 
-  const action = await prompt.run();
-
-  if (action.startsWith('↩️')) {
-      console.log('Operación cancelada.');
+  if (p.isCancel(action) || action === 'cancel') {
       return currentConfig;
   }
 
-  if (action.startsWith('🔄')) {
+  if (action === 'full') {
       return runSetupWizard();
   }
 
-  if (action.startsWith('🧠')) {
-      // Change model only
+  if (action === 'model') {
       const provider = currentConfig.llmProvider;
       const apiKey = getApiKeyForProvider(currentConfig, provider);
       
-      console.log(chalk.gray(`Proveedor actual: ${provider}`));
       if (!apiKey) {
-          console.log(chalk.red('No se encontró API Key válida. Ejecuta la reconfiguración completa.'));
+          p.log.error('No valid API key found. Run full reconfiguration.');
           return runSetupWizard();
       }
 
       const newModel = await selectModel(provider, apiKey);
       const newConfig = { ...currentConfig, llmModel: newModel, updatedAt: new Date().toISOString() };
       saveConfig(newConfig as Config);
-      console.log(chalk.green(`\n✅ Modelo actualizado a: ${newModel}`));
+      p.log.success(`Model updated to: ${newModel}`);
       return newConfig as Config;
   }
 
-  if (action.startsWith('🐞')) {
+  if (action === 'logs') {
       const newLevel = await inputLogLevel();
       const newConfig = { ...currentConfig, logLevel: newLevel, updatedAt: new Date().toISOString() };
       saveConfig(newConfig as Config); 
-      console.log(chalk.green(`\n✅ Nivel de logs actualizado a: ${newLevel}`));
+      p.log.success(`Log level updated to: ${newLevel}`);
       return newConfig as Config;
   }
 
-  if (action.startsWith('🔑')) {
-      // Update keys only
-      console.log(chalk.yellow('\nActualizando API Keys...'));
+  if (action === 'keys') {
       const provider = currentConfig.llmProvider;
       const newKey = await inputApiKey(provider);
       
@@ -322,33 +288,26 @@ export async function reconfigureWizard(): Promise<Config> {
       
       newConfig.updatedAt = new Date().toISOString();
       
-      // Optional: Ask for Tavily again?
-      const updateTavily = new Select({
-          name: 'update',
-          message: '¿Actualizar Tavily Key?',
-          choices: ['Si', 'No']
-      });
-      
-      if (await updateTavily.run() === 'Si') {
+      const updateTavily = await p.confirm({ message: 'Update Tavily Key?' });
+      if (!p.isCancel(updateTavily) && updateTavily) {
           newConfig.tavilyApiKey = await inputTavilyKey();
       }
 
       saveConfig(newConfig as Config);
-      console.log(chalk.green('\n✅ API Keys actualizadas.'));
+      p.log.success('API Keys updated.');
       return newConfig as Config; 
   }
 
-  if (action.startsWith('🗑️')) {
-      const confirm = new Select({
-          name: 'confirm',
-          message: '¿Estás seguro? Esto eliminará todas tus API keys y configuraciones.',
-          choices: ['No', 'Si, eliminar todo']
+  if (action === 'reset') {
+      const confirm = await p.confirm({
+          message: 'Are you sure? This will delete all API keys and settings.',
+          initialValue: false
       });
       
-      if (await confirm.run() === 'Si, eliminar todo') {
+      if (!p.isCancel(confirm) && confirm) {
           clearConfig();
-          console.log(chalk.red('\n🗑️  Configuración eliminada.'));
-          console.log(chalk.white('Por favor reinicia el agente para configurar de nuevo.'));
+          p.log.error('Configuration deleted.');
+          p.outro('Please restart the agent to reconfigure.');
           process.exit(0);
       }
       return currentConfig;
