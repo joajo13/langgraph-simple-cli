@@ -1,6 +1,7 @@
 import { StructuredTool, DynamicStructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
 import { Config } from "../../config";
+import { logger } from "../../logger";
 import { BaseSkill } from "../core/base-skill";
 import { AuthService } from "../../services/auth.service";
 import { createGmailAuthTool } from "../../tools/gmail/auth_tool";
@@ -32,9 +33,9 @@ export class GmailSkill extends BaseSkill {
 
     // If authenticated, add other tools
     const authClient = authService.getAuthenticatedClient();
-    console.log('[GmailSkill] Auth check result:', !!authClient);
+    logger.debug('[GmailSkill] Auth check result: ' + !!authClient);
     if (authClient) {
-        console.log('[GmailSkill] Authenticated! Registering Gmail tools...');
+        logger.info('[GmailSkill] Authenticated! Registering Gmail tools...');
         const gmailParams = {
             credentials: {
                 accessToken: async () => {
@@ -96,7 +97,7 @@ export class GmailSkill extends BaseSkill {
         description: description,
         schema: customSchema || tool.schema,
         func: async (input: any) => {
-            console.log(`[DEBUG] ${newName} input received:`, JSON.stringify(input, null, 2));
+            logger.debug(`[DEBUG] ${newName} input received:`, input);
 
             // Normalize inputs
             if (newName === 'gmail_create_draft' || newName === 'gmail_send_message') {
