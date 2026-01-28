@@ -3,3 +3,4 @@ dist
 .env
 .env.local
 .token.json
+.user_profile.json
