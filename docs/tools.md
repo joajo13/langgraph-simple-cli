@@ -1,6 +1,6 @@
 # Catálogo de Herramientas
 
-El agente viene pre-equipado con un set de herramientas "Core" para asistir en investigaciones.
+El agente viene pre-equipado con un set de herramientas "Core" para asistir en tareas diarias.
 
 ## 1. Búsqueda Web (Tavily)
 - **ID**: `web_search`
@@ -27,10 +27,20 @@ El agente viene pre-equipado con un set de herramientas "Core" para asistir en i
 - **Uso**: Extrae el contenido de texto de una página web específica y lo resume.
 - **Requisito**: OpenAI o LLM activo para el resumen.
 
-## 6. Gmail (Beta)
+## 6. Gmail
 - **ID**: `gmail`
 - **Uso**: Leer correos, buscar mensajes y redactar borradores.
-- **Guía Específica**: [Integración con Gmail](./gmail-integration.md).
+- **Guía Específica**: [Integración con Google](./gmail-integration.md).
+
+## 7. Calendar
+- **ID**: `calendar`
+- **Uso**: Consultar agenda, buscar eventos y agendar reuniones.
+- **Requisito**: Autenticación con Google.
+
+## 8. User Profile (Memory)
+- **ID**: `user_profile`
+- **Uso**: Permite al agente recordar tu nombre, preferencias y datos entre sesiones.
+- **Requisito**: Ninguno.
 
 ---
 

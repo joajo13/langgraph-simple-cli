@@ -7,7 +7,13 @@ A modern, fast multi-LLM agent built with **LangGraph**, featuring a sleek persi
 ## Features
 
 - 🤖 **Multi-LLM Support**: OpenAI, Anthropic, Google Gemini.
-- 🔧 **Registered Capabilities**: Calculator, Gmail, Calendar, Wikipedia, Web Search, URL Reader.
+- 🔧 **Registered Capabilities**: 
+    - **Productivity**: Gmail, Calendar.
+    - **Knowledge**: Wikipedia, Web Search, URL Reader.
+    - **Utilities**: Calculator, DateTime.
+- 🧠 **Smart Context**:
+    - **Auto-Summarization**: Automatically condenses long conversations to maintain context without hitting token limits.
+    - **Dynamic Skills**: Skills are loaded on-demand, keeping the core lightweight.
 - ⚡ **Parallel Execution**: Tools run in parallel for maximum efficiency.
 - 🛡️ **Modern CLI**:
     - **@clack/prompts**: Beautiful and persistent UI with borders and spinners.

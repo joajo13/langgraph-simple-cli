@@ -1,6 +1,6 @@
 # Suite de Pruebas y Verificación
 
-Para asegurar la estabilidad del **Research Assistant**, contamos con una serie de pruebas de validación que cubren desde la compilación hasta el flujo de conversación completo.
+Para asegurar la estabilidad del **Simple CLI**, contamos con una serie de pruebas de validación que cubren desde la compilación hasta el flujo de conversación completo.
 
 ## Pruebas Automáticas
 

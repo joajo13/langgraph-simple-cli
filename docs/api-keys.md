@@ -1,6 +1,6 @@
 # Configuración y API Keys
 
-El **Research Assistant** cuenta con un sistema de configuración interactivo que te guía en la configuración inicial y persiste tus credenciales de forma segura.
+El **Simple CLI** cuenta con un sistema de configuración interactivo que te guía en la configuración inicial y persiste tus credenciales de forma segura.
 
 ## Flujo de Inicio
 
@@ -14,10 +14,9 @@ Cuando ejecutas el agente por primera vez (o si falta el archivo de configuraci�
 
 ## Persistencia de Datos
 
-La configuración se guarda en un archivo JSON local:
+La configuración se guarda en un archivo JSON local en el directorio actual:
 
-- **Ruta**: `~/.research-assistant/config.json`
-- **En Docker**: `/root/.research-assistant/config.json`
+- **Ruta**: `.simple-cli.json` (en la raíz del proyecto)
 
 ### Estructura del Config
 ```json

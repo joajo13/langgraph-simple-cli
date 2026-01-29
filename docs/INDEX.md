@@ -1,10 +1,10 @@
-# Research Assistant - Índice de Documentación
+# Simple CLI - Índice de Documentación
 
-Bienvenido a la documentación técnica del **Research Assistant**, un agente de investigación inteligente construido con LangGraph, soporte multi-LLM y un sistema modular de habilidades (Skills).
+Bienvenido a la documentación técnica del **Simple CLI**, un agente inteligente construido con LangGraph, soporte multi-LLM y un sistema modular de habilidades (Skills).
 
 ## Introducción
 
-Este proyecto es un agente de CLI diseñado para ayudar en tareas de investigación mediante el uso de herramientas especializadas (Web Search, Wikipedia, etc.) y la orquestación de flujos de trabajo complejos mediante Grafos de Estado.
+Este proyecto es un agente de CLI diseñado para ayudar en tareas diarias mediante el uso de herramientas especializadas (Web Search, Wikipedia, Gmail, Calendar, etc.) y la orquestación de flujos de trabajo complejos mediante Grafos de Estado.
 
 ---
 

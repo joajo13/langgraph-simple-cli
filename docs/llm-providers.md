@@ -1,6 +1,6 @@
 # Proveedores de LLM
 
-El **Research Assistant** es agnóstico del modelo, lo que significa que puedes alternar entre los principales proveedores de IA del mercado.
+El **Simple CLI** es agnóstico del modelo, lo que significa que puedes alternar entre los principales proveedores de IA del mercado.
 
 ## Proveedores Soportados
 

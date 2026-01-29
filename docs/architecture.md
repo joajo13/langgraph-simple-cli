@@ -1,6 +1,6 @@
 # Arquitectura del Sistema
 
-Este documento describe la arquitectura y los principios de diseño que rigen el **Research Assistant**.
+Este documento describe la arquitectura y los principios de diseño que rigen el **Simple CLI**.
 
 ## Principios de Diseño
 
@@ -28,11 +28,13 @@ Las dependencias (como la `Config` o el `LLM`) se inyectan en los componentes pa
 El ciclo de vida de una consulta sigue este flujo:
 
 1. **Entrada**: El usuario escribe un mensaje en la CLI (`src/cli/console.ts`).
-2. **Estado**: Se inicializa o actualiza el `AgentState` (`src/state.ts`), que rastrea el historial de mensajes y resultados de herramientas.
+2. **Estado**: Se inicializa o actualiza el `AgentState` (`src/state.ts`).
 3. **Orquestación (LangGraph)**:
-   - **Router Node**: Analiza la intención del usuario y decide si requiere herramientas.
+   - **Summarizer Node**: Verifica si el historial es muy largo y lo resume para ahorrar tokens.
+   - **Router Node**: Analiza la intención y decide si requiere herramientas.
    - **Tool Executor Node**: Ejecuta las herramientas seleccionadas en paralelo.
-   - **Generator Node**: Sintetiza la respuesta final basándose en los resultados obtenidos.
+   - **Generator Node**: Sintetiza la respuesta final.
+   - **Memory Node**: Extrae y aprende información del usuario en segundo plano.
 4. **Salida**: La respuesta se imprime por consola mediante el `Renderer`.
 
 ---
@@ -56,7 +58,7 @@ src/
 ├── cli/           # Interfaz de comandos (REPL, Renderer, Commmands)
 ├── config/        # Setup Wizard, Validadores y Config Store
 ├── llm/           # Factory para OpenAI, Anthropic y Google
-├── nodes/         # Nodos del grafo (Router, Executor, Generator)
+├── nodes/         # Nodos del grafo (Router, Executor, Generator, Info, Memory)
 ├── skills/        # Core de habilidades y catálogo modular
 ├── tools/         # Implementaciones de herramientas base
 ├── graph.ts       # Definición y compilación del flujo LangGraph

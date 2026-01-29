@@ -1,22 +1,26 @@
-# Guía de Integración con Gmail
+# Guía de Integración con Google (Gmail & Calendar)
 
-Este documento detalla los pasos para habilitar la integración de Gmail en el **Research Assistant**, permitiendo al agente leer, buscar y redactar correos electrónicos en tu nombre.
+Este documento detalla los pasos para habilitar la integración de Gmail y Calendar en el **Simple CLI**, permitiendo al agente gestionar tu agenda y correos electrónicos.
 
 ## Requisitos Previos en Google Cloud
 
 Para que el agente pueda conectarse, debes configurar un proyecto en la [Google Cloud Console](https://console.cloud.google.com/):
 
 ### 1. Crear el Proyecto
-1. Crea un nuevo proyecto (ej. `langgraph-agent-gmail`).
-2. Habilita la **Gmail API** desde la biblioteca de APIs.
+1. Crea un nuevo proyecto (ej. `langgraph-agent-google`).
+2. Habilita las siguientes APIs desde la biblioteca:
+   - **Gmail API**
+   - **Google Calendar API**
 
 ### 2. Configurar Pantalla de Consentimiento (OAuth)
 1. Ve a "APIs & Services" > "OAuth consent screen".
 2. Configura una aplicación de tipo **External**.
 3. Añade los siguientes alcances (Scopes):
-   - `.../auth/gmail.readonly` (Leer correos)
-   - `.../auth/gmail.compose` (Redactar borradores)
-   - `.../auth/gmail.modify` (Marcar como leído/archivar)
+   - `.../auth/gmail.readonly`
+   - `.../auth/gmail.compose`
+   - `.../auth/gmail.send`
+   - `.../auth/gmail.modify`
+   - `.../auth/calendar`
 
 ### 3. Crear Credenciales
 1. Crea una credencial de tipo **OAuth client ID**.
