@@ -42,14 +42,13 @@ ${toolDescriptions}
 ${systemInstructions}
 
 DECISION LOGIC:
-1. greeting / casual chat -> needsTools: false (UNLESS user shares personal info)
+1. greeting / casual chat -> needsTools: false
 2. specific question requiring knowledge (weather, prices, news, facts, calculation, time) -> needsTools: TRUE
 3. explicit request to "search", "calculate", "check" -> needsTools: TRUE
-4. User shares personal info (name, location, preferences) -> needsTools: TRUE (Use 'update_profile_field' or 'add_user_memory')
 
 IMPORTANT:
 - If the user asks for "weather", "news", "price", "time", "who is", "what is" -> YOU MUST USE A TOOL.
-- If the user says "My name is X" or "I live in Y" -> YOU MUST USE 'update_profile_field' or 'add_user_memory'.
+- If the user asks to "Remember something" explicitly -> You can use 'add_user_memory' if the tool is available.
 
 CALENDAR TOOL SELECTION (CRITICAL):
 - "mis eventos", "agenda", "my events", "qué tengo hoy", "what do I have today" -> USE 'calendar_get_events'. NEVER use web_search for this.

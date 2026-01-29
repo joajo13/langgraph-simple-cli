@@ -9,28 +9,10 @@ dotenv.config();
 
 const CONFIG_FILE = path.join(process.cwd(), '.simple-cli.json');
 
-// Ensure we don't accidentally use the old directory constants if they are still around
-// const CONFIG_DIR = path.dirname(CONFIG_FILE); // Not needed if we write directly to file in CWD
-
-// Auto-migration: If global config exists (from previous version) and local doesn't, maybe copy it?
-// For now, we will just start fresh or let the user re-run setup.
-// But if we wanted to support migration from the "old" global .langgraph-simple-cli:
-// const GLOBAL_CONFIG_PATH = path.join(os.homedir(), '.langgraph-simple-cli', 'config.json');
-// if (fs.existsSync(GLOBAL_CONFIG_PATH) && !fs.existsSync(CONFIG_FILE)) {
-//    try {
-//        fs.copyFileSync(GLOBAL_CONFIG_PATH, CONFIG_FILE);
-//        logger.info(`Migrated global configuration to local .simple-cli.json`);
-//    } catch (e) {
-//        logger.error('Failed to migrate global configuration', e);
-//    }
-// }
-
 export { Config, LLMProvider };
 
 export function configExists(): boolean {
-  // We consider config exists if we have valid ENV vars OR a config file
-  // For backwards compatibility, we check file. 
-  // But ideally, we validate if we can satisfy the schema.
+
   if (fs.existsSync(CONFIG_FILE)) return true;
   
   // Check minimal ENV vars
@@ -78,7 +60,6 @@ export function loadConfig(): Config | null {
 }
 
 export function saveConfig(config: Config): void {
-  // We only save to file, we don't write to .env
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
 }
 

@@ -6,12 +6,12 @@ import { logger } from "../../logger";
 
 const PROFILE_PATH = path.join(process.cwd(), '.user_profile.json');
 
-interface UserProfile {
+export interface UserProfile {
     memories?: string[];
     [key: string]: any;
 }
 
-function loadProfile(): UserProfile {
+export function loadProfile(): UserProfile {
     try {
         if (fs.existsSync(PROFILE_PATH)) {
             const data = fs.readFileSync(PROFILE_PATH, 'utf-8');
@@ -32,6 +32,29 @@ function saveProfile(profile: UserProfile): void {
     }
 }
 
+export function updateProfileField(key: string, value: any): string {
+    const profile = loadProfile();
+    // Prevent overwriting 'memories' directly via this tool to be safe, though not strictly required
+    if (key === 'memories') {
+        return "Cannot overwrite 'memories' directly. Use 'add_user_memory' instead.";
+    }
+    profile[key] = value;
+    saveProfile(profile);
+    return `Successfully updated user profile: ${key} = ${value}`;
+}
+
+export function addUserMemory(memory: string): string {
+    const profile = loadProfile();
+    if (!profile.memories) profile.memories = [];
+    // Simple check to avoid duplicates
+    if (!profile.memories.includes(memory)) {
+        profile.memories.push(memory);
+        saveProfile(profile);
+        return "Added new memory about the user.";
+    }
+    return "Memory already exists.";
+}
+
 export const createProfileTools = () => [
     tool(async () => {
         const profile = loadProfile();
@@ -42,14 +65,7 @@ export const createProfileTools = () => [
         schema: z.object({}),
     }),
     tool(async ({ key, value }) => {
-        const profile = loadProfile();
-        // Prevent overwriting 'memories' directly via this tool to be safe, though not strictly required
-        if (key === 'memories') {
-            return "Cannot overwrite 'memories' directly. Use 'add_user_memory' instead.";
-        }
-        profile[key] = value;
-        saveProfile(profile);
-        return `Successfully updated user profile: ${key} = ${value}`;
+        return updateProfileField(key, value);
     }, {
         name: "update_profile_field",
         description: "Update or set a specific structured field in the user's profile (e.g., name, email, location, theme_preference).",
@@ -59,15 +75,7 @@ export const createProfileTools = () => [
         }),
     }),
     tool(async ({ memory }) => {
-       const profile = loadProfile();
-       if (!profile.memories) profile.memories = [];
-       // Simple check to avoid duplicates
-       if (!profile.memories.includes(memory)) {
-           profile.memories.push(memory);
-           saveProfile(profile);
-           return "Added new memory about the user.";
-       }
-       return "Memory already exists.";
+       return addUserMemory(memory);
     }, {
         name: "add_user_memory",
         description: "Add a unstructured memory, fact, or preference about the user that doesn't fit into a specific key-value field.",

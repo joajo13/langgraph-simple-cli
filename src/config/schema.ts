@@ -13,8 +13,6 @@ export const ConfigSchema = z.object({
   llmModel: z.string().min(1).default('gpt-4o-mini'),
   logLevel: z.enum(['debug', 'info', 'warn', 'error', 'silent']).default('info'),
   
-  // API Keys (Optional here because they might be loaded conditionally, 
-  // but strictly checked when specific provider is active in the Service)
   openaiApiKey: z.string().optional(),
   anthropicApiKey: z.string().optional(),
   googleApiKey: z.string().optional(),

@@ -4,7 +4,7 @@ import { Config } from './config';
 import { createLLM } from './llm';
 import { skillRegistry, loadAndRegisterSkills } from './skills'; 
 import { createSkillAccessTools } from './tools/skills.tools';
-import { createRouterNode, createToolExecutorNode, createGeneratorNode, createSummarizerNode } from './nodes';
+import { createRouterNode, createToolExecutorNode, createGeneratorNode, createSummarizerNode, createMemoryNode } from './nodes';
 import { ToolInfo } from './tools';
 
 /**
@@ -60,6 +60,7 @@ IMPORTANT RULES:
   const toolExecutorNode = createToolExecutorNode(allTools);
   const generatorNode = createGeneratorNode(llm);
   const summarizerNode = createSummarizerNode(llm);
+  const memoryNode = createMemoryNode(llm);
   
   const workflow = new StateGraph(AgentState)
     // Add nodes
@@ -67,6 +68,7 @@ IMPORTANT RULES:
     .addNode('toolExecutor', toolExecutorNode)
     .addNode('generator', generatorNode)
     .addNode('summarizer', summarizerNode)
+    .addNode('memory', memoryNode)
     
     // Entry point: Check for summarization first
     .addEdge(START, 'summarizer')
@@ -85,8 +87,11 @@ IMPORTANT RULES:
     // After tool execution, loop back to router to decide next steps
     .addEdge('toolExecutor', 'router')
     
-    // Generator ends the flow
-    .addEdge('generator', END);
+    // Generator creates the response, then we pass to Memory agent to learn in background
+    .addEdge('generator', 'memory')
+    
+    // Memory agent ends the flow
+    .addEdge('memory', END);
   
   // Initialize MemorySaver for persistence
   const checkpointer = new MemorySaver();
